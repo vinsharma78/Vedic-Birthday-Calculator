@@ -1,0 +1,5 @@
+{
+  "name": "Viniyogah - Vedic Birthday Calculator",
+  "description": "Calculates your Hindu birthdate (Janma Nakshatra) based on the Sun's Rashi and Moon's Nakshatra for future years.",
+  "requestFramePermissions": ["notifications"]
+}

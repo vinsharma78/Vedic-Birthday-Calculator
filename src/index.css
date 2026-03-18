@@ -1,0 +1,21 @@
+@import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@700;800;900&family=Inter:wght@400;500;600&display=swap');
+@import "tailwindcss";
+
+@theme {
+  --font-serif: "Georgia", serif;
+  --font-sans: "Inter", system-ui, sans-serif;
+  --font-display: "Montserrat", sans-serif;
+  --color-primary: #5E2B97;
+  --color-accent: #F27D26;
+  --color-purple-dark: #3B1B5F;
+  --color-orange-vibrant: #FF7A00;
+}
+
+@keyframes spin-slow {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+.animate-spin-slow {
+  animation: spin-slow 8s linear infinite;
+}
