@@ -1,21 +1,82 @@
-@import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@700;800;900&family=Inter:wght@400;500;600&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@300;700;800;900&family=Inter:wght@400;500;600&family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500;1,600;1,700&display=swap');
 @import "tailwindcss";
 
 @theme {
-  --font-serif: "Georgia", serif;
-  --font-sans: "Inter", system-ui, sans-serif;
+  --font-sans: "Montserrat", ui-sans-serif, system-ui, sans-serif;
   --font-display: "Montserrat", sans-serif;
+  --font-serif: "Cormorant Garamond", serif;
+  --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
+  
   --color-primary: #5E2B97;
   --color-accent: #F27D26;
-  --color-purple-dark: #3B1B5F;
-  --color-orange-vibrant: #FF7A00;
+  --color-paper: #FDFCFB;
+  --color-ink: #1A1A1A;
+  --color-gold: #D4AF37;
+  --color-indigo-deep: #2E1A47;
 }
 
-@keyframes spin-slow {
-  from { transform: rotate(0deg); }
-  to { transform: rotate(360deg); }
+@layer base {
+  body {
+    @apply bg-paper text-ink font-sans font-light antialiased;
+  }
+  
+  h1, h2, h3, h4, h5, h6 {
+    @apply font-sans font-light;
+  }
 }
 
-.animate-spin-slow {
-  animation: spin-slow 8s linear infinite;
+@layer components {
+  .glass-card {
+    @apply bg-white/70 backdrop-blur-md border border-white/20 shadow-xl;
+  }
+  
+  .premium-button {
+    @apply relative overflow-hidden transition-all duration-300 active:scale-95;
+  }
+  
+  .premium-input {
+    @apply bg-white/50 border-stone-200 focus:border-accent focus:ring-1 focus:ring-accent/20 transition-all rounded-xl;
+  }
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+  .no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+}
+
+.animate-float {
+  animation: float 6s ease-in-out infinite;
+}
+
+@keyframes float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-10px); }
+}
+
+.animate-shimmer {
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+  background-size: 200% 100%;
+  animation: shimmer 2s infinite;
+}
+
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+.animate-glow-orange {
+  animation: glow-orange 3s ease-in-out infinite;
+}
+
+@keyframes glow-orange {
+  0%, 100% { 
+    text-shadow: 0 0 4px rgba(242, 125, 38, 0.2);
+    opacity: 0.8;
+  }
+  50% { 
+    text-shadow: 0 0 12px rgba(242, 125, 38, 0.6);
+    opacity: 1;
+  }
 }

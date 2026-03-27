@@ -5,11 +5,28 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Viniyogah | Vedic Birthday Calculator</title>
     <meta name="theme-color" content="#5E2B97" />
-    <link rel="manifest" href="/manifest.json" />
-    <link rel="apple-touch-icon" href="https://picsum.photos/seed/viniyogah/192/192" />
+    <link rel="manifest" href="/manifest.json?v=11" />
+    <link rel="icon" type="image/png" sizes="32x32" href="/branding/favicon-v9.png?v=11" />
+    <link rel="icon" type="image/png" sizes="192x192" href="/branding/viniyogah-vel-192.png?v=11" />
+    <link rel="icon" type="image/svg+xml" href="/vel-icon.svg?v=11" />
+    <link rel="mask-icon" href="/vel-icon.svg?v=11" color="#5E2B97" />
+    
+    <!-- iOS Home Screen Icons -->
+    <link rel="apple-touch-icon" href="/branding/viniyogah-vel-180.png?v=11" />
+    <link rel="apple-touch-icon-precomposed" href="/branding/viniyogah-vel-180.png?v=11" />
+    <link rel="apple-touch-icon" sizes="180x180" href="/branding/viniyogah-vel-180.png?v=11" />
+    <link rel="apple-touch-icon" sizes="152x152" href="/branding/viniyogah-vel-180.png?v=11" />
+    <link rel="apple-touch-icon" sizes="167x167" href="/branding/viniyogah-vel-180.png?v=11" />
+    
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="Viniyogah" />
+    <meta name="mobile-web-app-capable" content="yes" />
   </head>
   <body>
     <div id="root"></div>
+    <!-- Hidden image to force pre-loading of the icon for iOS cache busting -->
+    <img src="/branding/viniyogah-vel-180.png" style="display:none;" aria-hidden="true" />
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

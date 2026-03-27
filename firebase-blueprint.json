@@ -1,0 +1,52 @@
+{
+  "entities": {
+    "User": {
+      "title": "User",
+      "description": "User profile information",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string", "description": "Unique user ID from Firebase Auth" },
+        "displayName": { "type": "string", "description": "User's display name" },
+        "email": { "type": "string", "description": "User's email address" },
+        "role": { "type": "string", "enum": ["admin", "user"], "description": "User's role in the application" },
+        "createdAt": { "type": "string", "format": "date-time", "description": "When the user profile was created" }
+      },
+      "required": ["uid", "email", "role"]
+    },
+    "BirthProfile": {
+      "title": "BirthProfile",
+      "description": "A saved Vedic birth profile",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string", "description": "Owner's user ID" },
+        "name": { "type": "string", "description": "Person's name" },
+        "dob": { "type": "string", "description": "Date of birth (YYYY-MM-DD)" },
+        "tob": { "type": "string", "description": "Time of birth (HH:mm)" },
+        "tobUnknown": { "type": "boolean", "description": "Whether time of birth is unknown" },
+        "pob": { "type": "string", "description": "Place of birth" },
+        "pobUnknown": { "type": "boolean", "description": "Whether place of birth is unknown" },
+        "moonNakshatraIndex": { "type": "integer", "description": "Index of the moon nakshatra" },
+        "moonRashiIndex": { "type": "integer", "description": "Index of the moon rashi" },
+        "sunRashiIndex": { "type": "integer", "description": "Index of the sun rashi" },
+        "birthNakshatra": { "type": "string", "description": "Name of the birth nakshatra" },
+        "sunRashi": { "type": "string", "description": "Name of the sun rashi" },
+        "moonRashi": { "type": "string", "description": "Name of the moon rashi" },
+        "planets": { "type": "array", "description": "List of planetary positions" },
+        "rahu": { "type": "object", "description": "Rahu position" },
+        "ketu": { "type": "object", "description": "Ketu position" },
+        "createdAt": { "type": "string", "format": "date-time", "description": "When the profile was created" }
+      },
+      "required": ["uid", "name", "dob", "moonNakshatraIndex", "moonRashiIndex", "sunRashiIndex", "birthNakshatra", "sunRashi", "moonRashi"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": "User",
+      "description": "User profiles"
+    },
+    "/profiles/{profileId}": {
+      "schema": "BirthProfile",
+      "description": "Saved birth profiles"
+    }
+  }
+}

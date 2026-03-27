@@ -1,0 +1,38 @@
+<svg width="512" height="512" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Solid Background for the entire icon -->
+  <rect width="512" height="512" fill="#5E2B97"/>
+  
+  <g transform="translate(106, 40) scale(3)">
+    <defs>
+      <linearGradient id="vel-grad-icon" x1="50" y1="5" x2="50" y2="130" gradientUnits="userSpaceOnUse">
+        <stop stop-color="#F27D26" />
+        <stop offset="1" stop-color="#FFFFFF" />
+      </linearGradient>
+    </defs>
+    
+    <!-- Vel Leaf Shape -->
+    <path 
+      d="M50 5C50 5 15 55 15 90C15 120 35 130 50 130C65 130 85 120 85 90C85 55 50 5Z" 
+      stroke="url(#vel-grad-icon)" 
+      stroke-width="8" 
+      stroke-linecap="round" 
+      stroke-linejoin="round"
+      fill="#5E2B97"
+    />
+    
+    <!-- Stem -->
+    <path d="M50 130V140" stroke="#F27D26" stroke-width="8" stroke-linecap="round"/>
+    
+    <!-- Tripundra (3 lines) -->
+    <path d="M35 75H65" stroke="#FFFFFF" stroke-width="4" stroke-linecap="round"/>
+    <path d="M30 85H70" stroke="#FFFFFF" stroke-width="4" stroke-linecap="round"/>
+    <path d="M35 95H65" stroke="#FFFFFF" stroke-width="4" stroke-linecap="round"/>
+    
+    <!-- Bindu (Dot) -->
+    <circle cx="50" cy="85" r="5" fill="#F27D26"/>
+    
+    <!-- Decorative base curls -->
+    <path d="M42 122C38 122 34 118 34 114C34 110 38 106 42 106" stroke="#F27D26" stroke-width="3" stroke-linecap="round"/>
+    <path d="M58 122C62 122 66 118 66 114C66 110 62 106 58 106" stroke="#F27D26" stroke-width="3" stroke-linecap="round"/>
+  </g>
+</svg>

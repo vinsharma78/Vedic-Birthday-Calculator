@@ -2,19 +2,41 @@
   "short_name": "Viniyogah",
   "name": "Viniyogah Vedic Birthday",
   "description": "Calculate your traditional Hindu birthday based on Tithi and Nakshatra.",
+  "version": "1.1.0",
   "icons": [
     {
-      "src": "https://picsum.photos/seed/viniyogah/192/192",
+      "src": "/branding/favicon-v9.png?v=11",
       "type": "image/png",
-      "sizes": "192x192"
+      "sizes": "32x32",
+      "purpose": "any"
     },
     {
-      "src": "https://picsum.photos/seed/viniyogah/512/512",
+      "src": "/branding/viniyogah-vel-192.png?v=11",
       "type": "image/png",
-      "sizes": "512x512"
+      "sizes": "192x192",
+      "purpose": "any"
+    },
+    {
+      "src": "/branding/viniyogah-vel-512.png?v=11",
+      "type": "image/png",
+      "sizes": "512x512",
+      "purpose": "any"
+    },
+    {
+      "src": "/branding/viniyogah-vel-192.png?v=11",
+      "type": "image/png",
+      "sizes": "192x192",
+      "purpose": "maskable"
+    },
+    {
+      "src": "/branding/viniyogah-vel-512.png?v=11",
+      "type": "image/png",
+      "sizes": "512x512",
+      "purpose": "maskable"
     }
   ],
-  "start_url": ".",
+  "start_url": "/",
+  "scope": "/",
   "display": "standalone",
   "theme_color": "#5E2B97",
   "background_color": "#ffffff"

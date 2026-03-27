@@ -27,6 +27,11 @@ async function startServer() {
     next();
   });
 
+  // Explicitly serve public directory in dev mode to ensure icons are served
+  if (process.env.NODE_ENV !== "production") {
+    app.use(express.static(path.resolve("public")));
+  }
+
   // Vite middleware for development
   if (process.env.NODE_ENV !== "production") {
     console.log("Starting in DEVELOPMENT mode with Vite middleware");
@@ -39,7 +44,6 @@ async function startServer() {
     const distPath = path.resolve("dist");
     console.log(`Starting in PRODUCTION mode, serving from: ${distPath}`);
     app.use(express.static(distPath));
-    app.get("/favicon.ico", (req, res) => res.status(204).end());
     app.get("*", (req, res) => {
       res.sendFile(path.join(distPath, "index.html"));
     });
