@@ -6,6 +6,7 @@ import {
   Moon, 
   Sun, 
   Bell, 
+  BellOff,
   ChevronRight, 
   Info, 
   RefreshCw,
@@ -49,7 +50,6 @@ import { AuspiciousGuidance } from './components/AuspiciousGuidance';
 import { VedicChat } from './components/VedicChat';
 import { PlaceSearch, PlaceResult } from './components/PlaceSearch';
 import { motion, AnimatePresence } from 'motion/react';
-import { APIProvider, useMapsLibrary } from '@vis.gl/react-google-maps';
 import { 
   auth, 
   db, 
@@ -128,6 +128,18 @@ class ErrorBoundary extends React.Component<any, any> {
   }
 }
 
+interface VedicAlert {
+  id: string;
+  uid: string;
+  name: string;
+  type: 'birthday' | 'tithi' | 'nakshatra';
+  targetDate?: string;
+  targetTithi?: string;
+  targetNakshatra?: string;
+  enabled: boolean;
+  createdAt: number;
+}
+
 interface BirthProfile {
   name: string;
   dob: string;
@@ -142,12 +154,26 @@ interface BirthProfile {
   moonRashi: string;
   moonNakshatraIndex: number;
   moonRashiIndex: number;
-  rahu?: { longitude: number; rashi: string; rashiIndex: number };
-  ketu?: { longitude: number; rashi: string; rashiIndex: number };
-  lagna?: { longitude: number; rashi: string; rashiIndex: number };
-  planets: { name: string; symbol: string; rashi: string; rashiIndex: number; longitude: number }[];
+  rahu?: { longitude: number; rashi: string; rashiIndex: number; navamsha: string; dashamsha: string };
+  ketu?: { longitude: number; rashi: string; rashiIndex: number; navamsha: string; dashamsha: string };
+  lagna?: { longitude: number; rashi: string; rashiIndex: number; navamsha: string; dashamsha: string };
+  planets: { name: string; symbol: string; rashi: string; rashiIndex: number; longitude: number; navamsha: string; dashamsha: string }[];
+  upcomingPlanets?: { name: string; rashi: string; rashiIndex: number; longitude: number }[];
   ayanamsa?: number;
 }
+
+const RASHI_SHORT = [
+  'Mes', 'Vri', 'Mit', 'Kar', 'Sim', 'Kan',
+  'Tul', 'Vri', 'Dha', 'Mak', 'Kum', 'Mee'
+];
+
+const NAKSHATRA_SHORT = [
+  'Ashw', 'Bhar', 'Krit', 'Rohi', 'Mrig', 'Ardr',
+  'Puna', 'Push', 'Ashl', 'Magh', 'P.Phal', 'U.Phal',
+  'Hast', 'Chit', 'Swat', 'Vish', 'Anur', 'Jyes',
+  'Mula', 'P.Asad', 'U.Asad', 'Shra', 'Dhan', 'Shat',
+  'P.Bhad', 'U.Bhad', 'Reva'
+];
 
 interface UpcomingBirthday {
   year: number;
@@ -209,10 +235,17 @@ async function fetchTimezoneOffset(lat: number, lng: number, date: Date): Promis
 
   try {
     const response = await fetch(url);
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
     const data = await response.json();
     if (data.status === 'OK') {
       const totalOffsetSeconds = data.rawOffset + data.dstOffset;
       return totalOffsetSeconds / 3600;
+    }
+    if (data.status === 'REQUEST_DENIED') {
+      console.error('Google Maps API Key error:', data.errorMessage);
+      return null;
     }
     console.error('Timezone API error:', data.status, data.errorMessage);
     return null;
@@ -225,9 +258,7 @@ async function fetchTimezoneOffset(lat: number, lng: number, date: Date): Promis
 export default function AppWrapper() {
   return (
     <ErrorBoundary>
-      <APIProvider apiKey={API_KEY} version="weekly">
-        <App />
-      </APIProvider>
+      <App />
     </ErrorBoundary>
   );
 }
@@ -250,6 +281,17 @@ function App() {
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
+
+  // Auto-hide toast
+  useEffect(() => {
+    if (toast) {
+      const timer = setTimeout(() => {
+        setToast(null);
+      }, 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [toast]);
 
   // Safety check for loading state
   useEffect(() => {
@@ -276,6 +318,8 @@ function App() {
   const [installPrompt, setInstallPrompt] = useState<any>(null);
   const [showInstallGuide, setShowInstallGuide] = useState(false);
   const [isInstalled, setIsInstalled] = useState(false);
+  const [showSavedAlerts, setShowSavedAlerts] = useState(false);
+  const [alerts, setAlerts] = useState<VedicAlert[]>([]);
   const [currentTime, setCurrentTime] = useState(new Date());
   const [rahuKaal, setRahuKaal] = useState<{ 
     today: { start: Date; end: Date; isOngoing: boolean };
@@ -425,10 +469,12 @@ function App() {
 
   useEffect(() => {
     const handleBeforeInstallPrompt = (e: any) => {
+      console.log("beforeinstallprompt event fired");
       e.preventDefault();
       setInstallPrompt(e);
     };
     const handleAppInstalled = () => {
+      console.log("appinstalled event fired");
       setIsInstalled(true);
       setInstallPrompt(null);
     };
@@ -441,25 +487,32 @@ function App() {
   }, []);
 
   const handleInstall = async () => {
-    console.log("handleInstall triggered");
+    console.log("handleInstall triggered, installPrompt available:", !!installPrompt);
     const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !(window as any).MSStream;
     const isChromeIOS = /CriOS/.test(navigator.userAgent);
 
-    if (isChromeIOS) {
-      console.log("Chrome on iOS detected");
+    if (isChromeIOS || isIOS) {
+      console.log("iOS detected, showing guide");
       setShowInstallGuide(true);
       return;
     }
 
     if (installPrompt) {
       console.log("Showing native install prompt");
-      installPrompt.prompt();
-      const { outcome } = await installPrompt.userChoice;
-      if (outcome === 'accepted') {
-        setInstallPrompt(null);
+      try {
+        installPrompt.prompt();
+        const { outcome } = await installPrompt.userChoice;
+        console.log("Install prompt outcome:", outcome);
+        if (outcome === 'accepted') {
+          setIsInstalled(true);
+          setInstallPrompt(null);
+        }
+      } catch (err) {
+        console.error("Error during native install prompt:", err);
+        setShowInstallGuide(true);
       }
     } else {
-      console.log("No native prompt, showing guide");
+      console.log("No native prompt available, showing guide");
       setShowInstallGuide(true);
     }
   };
@@ -501,6 +554,39 @@ function App() {
       setSavedProfiles(profiles);
     }, (error) => {
       handleFirestoreError(error, OperationType.LIST, 'profiles');
+    });
+
+    return () => unsubscribe();
+  }, [user, isAuthReady]);
+
+  useEffect(() => {
+    if (!isAuthReady) return;
+
+    if (!user) {
+      // Load from localStorage if not logged in
+      const reminders = JSON.parse(localStorage.getItem('viniyogah_reminders') || '[]');
+      const localAlerts: VedicAlert[] = reminders.map((r: any, idx: number) => ({
+        id: `local-${idx}`,
+        uid: 'local',
+        name: `Vedic Birthday: ${r.name}`,
+        targetDate: r.formattedDate,
+        type: 'birthday',
+        enabled: true,
+        createdAt: new Date(r.date).getTime()
+      }));
+      setAlerts(localAlerts);
+      return;
+    }
+
+    const q = query(collection(db, 'alerts'), where('uid', '==', user.uid));
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const loadedAlerts: VedicAlert[] = [];
+      snapshot.forEach((doc) => {
+        loadedAlerts.push({ id: doc.id, ...doc.data() } as VedicAlert);
+      });
+      setAlerts(loadedAlerts);
+    }, (error) => {
+      handleFirestoreError(error, OperationType.LIST, 'alerts');
     });
 
     return () => unsubscribe();
@@ -588,6 +674,71 @@ function App() {
     }
   };
 
+  const toggleAlert = async (alert: VedicAlert) => {
+    if (!user) {
+      // Handle local storage toggle
+      const reminders = JSON.parse(localStorage.getItem('viniyogah_reminders') || '[]');
+      const updatedReminders = reminders.map((r: any) => {
+        if (r.formattedDate === alert.targetDate && `Vedic Birthday: ${r.name}` === alert.name) {
+          return { ...r, enabled: !alert.enabled };
+        }
+        return r;
+      });
+      localStorage.setItem('viniyogah_reminders', JSON.stringify(updatedReminders));
+      
+      // Update local alerts state
+      const localAlerts: VedicAlert[] = updatedReminders.map((r: any, idx: number) => ({
+        id: `local-${idx}`,
+        uid: 'local',
+        name: `Vedic Birthday: ${r.name}`,
+        targetDate: r.formattedDate,
+        type: 'birthday',
+        enabled: r.enabled !== false,
+        createdAt: r.createdAt || new Date(r.date).getTime()
+      }));
+      setAlerts(localAlerts);
+      return;
+    }
+    try {
+      await updateDoc(doc(db, 'alerts', alert.id), {
+        enabled: !alert.enabled
+      });
+    } catch (error) {
+      handleFirestoreError(error, OperationType.UPDATE, `alerts/${alert.id}`);
+    }
+  };
+
+  const deleteAlert = async (alertId: string) => {
+    if (!user) {
+      // Handle local storage delete
+      const reminders = JSON.parse(localStorage.getItem('viniyogah_reminders') || '[]');
+      // Extract index from local-idx
+      const idx = parseInt(alertId.split('-')[1]);
+      if (!isNaN(idx)) {
+        reminders.splice(idx, 1);
+        localStorage.setItem('viniyogah_reminders', JSON.stringify(reminders));
+        
+        // Update local alerts state
+        const localAlerts: VedicAlert[] = reminders.map((r: any, idx: number) => ({
+          id: `local-${idx}`,
+          uid: 'local',
+          name: `Vedic Birthday: ${r.name}`,
+          targetDate: r.formattedDate,
+          type: 'birthday',
+          enabled: r.enabled !== false,
+          createdAt: r.createdAt || new Date(r.date).getTime()
+        }));
+        setAlerts(localAlerts);
+      }
+      return;
+    }
+    try {
+      await deleteDoc(doc(db, 'alerts', alertId));
+    } catch (error) {
+      handleFirestoreError(error, OperationType.DELETE, `alerts/${alertId}`);
+    }
+  };
+
   // Handle URL parameters for sharing
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -672,8 +823,8 @@ function App() {
 
   // Auto-calculate whenever inputs change
   useEffect(() => {
-    const trimmedName = name.trim();
-    if (!trimmedName || !dob || dob.length < 8) {
+    const trimmedName = name.trim() || "You";
+    if (!dob || dob.length < 8) {
       setProfile(null);
       setUpcoming([]);
       setError(null);
@@ -765,42 +916,18 @@ function App() {
         const dobString = `${y}-${m.toString().padStart(2, '0')}-${d.toString().padStart(2, '0')}`;
         const tobString = tobUnknown ? '12:00' : tob.split(':').map(p => p.padStart(2, '0')).join(':');
 
-        const planetsData = [
-          { name: 'Sun', symbol: 'Su', rashi: pos.sun.rashi, rashiIndex: pos.sun.rashiIndex, longitude: pos.sun.longitude },
-          { name: 'Moon', symbol: 'Mo', rashi: pos.moon.rashi, rashiIndex: pos.moon.rashiIndex, longitude: pos.moon.longitude },
-          { name: 'Mars', symbol: 'Ma', rashi: pos.mars.rashi, rashiIndex: pos.mars.rashiIndex, longitude: pos.mars.longitude },
-          { name: 'Mercury', symbol: 'Me', rashi: pos.mercury.rashi, rashiIndex: pos.mercury.rashiIndex, longitude: pos.mercury.longitude },
-          { name: 'Jupiter', symbol: 'Ju', rashi: pos.jupiter.rashi, rashiIndex: pos.jupiter.rashiIndex, longitude: pos.jupiter.longitude },
-          { name: 'Venus', symbol: 'Ve', rashi: pos.venus.rashi, rashiIndex: pos.venus.rashiIndex, longitude: pos.venus.longitude },
-          { name: 'Saturn', symbol: 'Sa', rashi: pos.saturn.rashi, rashiIndex: pos.saturn.rashiIndex, longitude: pos.saturn.longitude },
-          { name: 'Rahu', symbol: 'Ra', rashi: pos.rahu.rashi, rashiIndex: pos.rahu.rashiIndex, longitude: pos.rahu.longitude },
-          { name: 'Ketu', symbol: 'Ke', rashi: pos.ketu.rashi, rashiIndex: pos.ketu.rashiIndex, longitude: pos.ketu.longitude }
+    const planetsData = [
+          { name: 'Sun', symbol: 'Su', rashi: pos.sun.rashi, rashiIndex: pos.sun.rashiIndex, longitude: pos.sun.longitude, navamsha: pos.sun.navamsha, dashamsha: pos.sun.dashamsha },
+          { name: 'Moon', symbol: 'Mo', rashi: pos.moon.rashi, rashiIndex: pos.moon.rashiIndex, longitude: pos.moon.longitude, navamsha: pos.moon.navamsha, dashamsha: pos.moon.dashamsha },
+          { name: 'Mars', symbol: 'Ma', rashi: pos.mars.rashi, rashiIndex: pos.mars.rashiIndex, longitude: pos.mars.longitude, navamsha: pos.mars.navamsha, dashamsha: pos.mars.dashamsha },
+          { name: 'Mercury', symbol: 'Me', rashi: pos.mercury.rashi, rashiIndex: pos.mercury.rashiIndex, longitude: pos.mercury.longitude, navamsha: pos.mercury.navamsha, dashamsha: pos.mercury.dashamsha },
+          { name: 'Jupiter', symbol: 'Ju', rashi: pos.jupiter.rashi, rashiIndex: pos.jupiter.rashiIndex, longitude: pos.jupiter.longitude, navamsha: pos.jupiter.navamsha, dashamsha: pos.jupiter.dashamsha },
+          { name: 'Venus', symbol: 'Ve', rashi: pos.venus.rashi, rashiIndex: pos.venus.rashiIndex, longitude: pos.venus.longitude, navamsha: pos.venus.navamsha, dashamsha: pos.venus.dashamsha },
+          { name: 'Saturn', symbol: 'Sa', rashi: pos.saturn.rashi, rashiIndex: pos.saturn.rashiIndex, longitude: pos.saturn.longitude, navamsha: pos.saturn.navamsha, dashamsha: pos.saturn.dashamsha },
+          { name: 'Rahu', symbol: 'Ra', rashi: pos.rahu.rashi, rashiIndex: pos.rahu.rashiIndex, longitude: pos.rahu.longitude, navamsha: pos.rahu.navamsha, dashamsha: pos.rahu.dashamsha },
+          { name: 'Ketu', symbol: 'Ke', rashi: pos.ketu.rashi, rashiIndex: pos.ketu.rashiIndex, longitude: pos.ketu.longitude, navamsha: pos.ketu.navamsha, dashamsha: pos.ketu.dashamsha }
         ];
 
-        const newProfile: BirthProfile = {
-          name: trimmedName,
-          dob: dobString,
-          tob: tobString,
-          tobUnknown,
-          pob,
-          pobUnknown,
-          pobCoords: pobCoords || undefined,
-          birthNakshatra: finalNakshatraName,
-          sunRashi: pos.sun.rashi,
-          sunRashiIndex: pos.sun.rashiIndex,
-          moonRashi: pos.moon.rashi,
-          moonNakshatraIndex: finalNakshatraIndex,
-          moonRashiIndex: pos.moon.rashiIndex,
-          rahu: pos.rahu,
-          ketu: pos.ketu,
-          lagna: pos.lagna,
-          planets: planetsData,
-          ayanamsa: pos.ayanamsa
-        };
-
-        setProfile(newProfile);
-
-        // Calculate next 5 upcoming birthdays (today or future)
         const results: UpcomingBirthday[] = [];
         const today = new Date();
         today.setHours(0, 0, 0, 0);
@@ -817,11 +944,58 @@ function App() {
           }
           checkYear++;
         }
+
+        // Calculate planetary positions for the first upcoming birthday for AI guidance
+        let upcomingPlanetsData = undefined;
+        if (results.length > 0) {
+          const upcomingPos = calculatePositions(results[0].date, pobCoords || undefined);
+          if (upcomingPos) {
+            upcomingPlanetsData = [
+              { name: 'Sun', rashi: upcomingPos.sun.rashi, rashiIndex: upcomingPos.sun.rashiIndex, longitude: upcomingPos.sun.longitude },
+              { name: 'Moon', rashi: upcomingPos.moon.rashi, rashiIndex: upcomingPos.moon.rashiIndex, longitude: upcomingPos.moon.longitude },
+              { name: 'Mars', rashi: upcomingPos.mars.rashi, rashiIndex: upcomingPos.mars.rashiIndex, longitude: upcomingPos.mars.longitude },
+              { name: 'Mercury', rashi: upcomingPos.mercury.rashi, rashiIndex: upcomingPos.mercury.rashiIndex, longitude: upcomingPos.mercury.longitude },
+              { name: 'Jupiter', rashi: upcomingPos.jupiter.rashi, rashiIndex: upcomingPos.jupiter.rashiIndex, longitude: upcomingPos.jupiter.longitude },
+              { name: 'Venus', rashi: upcomingPos.venus.rashi, rashiIndex: upcomingPos.venus.rashiIndex, longitude: upcomingPos.venus.longitude },
+              { name: 'Saturn', rashi: upcomingPos.saturn.rashi, rashiIndex: upcomingPos.saturn.rashiIndex, longitude: upcomingPos.saturn.longitude },
+              { name: 'Rahu', rashi: upcomingPos.rahu.rashi, rashiIndex: upcomingPos.rahu.rashiIndex, longitude: upcomingPos.rahu.longitude },
+              { name: 'Ketu', rashi: upcomingPos.ketu.rashi, rashiIndex: upcomingPos.ketu.rashiIndex, longitude: upcomingPos.ketu.longitude }
+            ];
+          }
+        }
+
+        const newProfile: BirthProfile = {
+          name: trimmedName,
+          dob: dobString,
+          tob: tobString,
+          tobUnknown,
+          pob,
+          pobUnknown,
+          pobCoords: pobCoords || undefined,
+          birthNakshatra: finalNakshatraName,
+          sunRashi: pos.sun.rashi,
+          sunRashiIndex: pos.sun.rashiIndex,
+          moonRashi: pos.moon.rashi,
+          moonNakshatraIndex: finalNakshatraIndex,
+          moonRashiIndex: pos.moon.rashiIndex,
+          rahu: { ...pos.rahu, dashamsha: pos.rahu.dashamsha },
+          ketu: { ...pos.ketu, dashamsha: pos.ketu.dashamsha },
+          lagna: { ...pos.lagna, dashamsha: pos.lagna.dashamsha },
+          planets: planetsData,
+          upcomingPlanets: upcomingPlanetsData,
+          ayanamsa: pos.ayanamsa
+        };
+
+        setProfile(newProfile);
         setUpcoming(results);
         setError(null);
-      } catch (err) {
-        console.error(err);
-        setError('Invalid date or time format');
+      } catch (err: any) {
+        console.error("Calculation error:", err);
+        if (err.message?.includes('out of range')) {
+          setError('The date is outside the supported range for Vedic calculations.');
+        } else {
+          setError('An error occurred during calculation. Please check your inputs.');
+        }
       }
     };
 
@@ -860,7 +1034,12 @@ function App() {
       setIsOtpSent(true);
     } catch (err: any) {
       console.error("Error sending OTP:", err);
-      setError(err.message || "Failed to send OTP. Please try again.");
+      let msg = "Failed to send OTP. Please try again.";
+      if (err.code === 'auth/invalid-phone-number') msg = "Invalid phone number format.";
+      if (err.code === 'auth/too-many-requests') msg = "Too many attempts. Please try again later.";
+      if (err.code === 'auth/captcha-check-failed') msg = "Security check failed. Please refresh and try again.";
+      
+      setError(msg);
       // Reset reCAPTCHA if it fails
       if ((window as any).recaptchaVerifier) {
         (window as any).recaptchaVerifier.clear();
@@ -1073,31 +1252,70 @@ function App() {
     }
   };
 
-  const scheduleNotification = (bday: UpcomingBirthday) => {
+  const scheduleNotification = async (bday: UpcomingBirthday) => {
+    console.log("scheduleNotification triggered for:", bday.formattedDate);
     // If permission is not granted, we still allow "scheduling" for the demo experience
     // but we warn the user that native alerts might not pop up.
     if (notificationPermission !== 'granted') {
-      console.log("Notification permission not granted, showing alert");
+      console.log("Notification permission not granted, showing alert info");
     }
 
     console.log("Reminder set for:", bday.formattedDate);
-    alert(`Reminder set! You will be notified 1 day before and on ${bday.formattedDate}.`);
     
-    // Store reminder in localStorage
-    const reminders = JSON.parse(localStorage.getItem('viniyogah_reminders') || '[]');
-    const newReminder = {
-      name: profile?.name,
-      date: bday.date,
-      formattedDate: bday.formattedDate,
-      sunRashi: profile?.sunRashi,
-      nakshatra: profile?.birthNakshatra
-    };
-    
-    // Check if already exists
-    const exists = reminders.some((r: any) => r.name === newReminder.name && r.formattedDate === newReminder.formattedDate);
-    if (!exists) {
-      reminders.push(newReminder);
-      localStorage.setItem('viniyogah_reminders', JSON.stringify(reminders));
+    // Store reminder in Firestore if logged in
+    if (user) {
+      try {
+        const alertData = {
+          uid: user.uid,
+          name: `Vedic Birthday: ${profile?.name}`,
+          targetDate: bday.formattedDate,
+          type: 'birthday',
+          enabled: true,
+          createdAt: serverTimestamp()
+        };
+        console.log("Saving alert to Firestore:", alertData);
+        await addDoc(collection(db, 'alerts'), alertData);
+        console.log("Alert saved successfully to Firestore");
+        setToast({ message: `Reminder set! This birthday has been added to your Alerts.`, type: 'success' });
+      } catch (err) {
+        console.error('Failed to save alert to Firestore:', err);
+        setToast({ message: `Failed to save alert. Please try again.`, type: 'error' });
+        handleFirestoreError(err, OperationType.WRITE, 'alerts');
+      }
+    } else {
+      // Store reminder in localStorage if not logged in
+      console.log("Saving alert to localStorage");
+      const reminders = JSON.parse(localStorage.getItem('viniyogah_reminders') || '[]');
+      const newReminder = {
+        name: profile?.name,
+        date: bday.date,
+        formattedDate: bday.formattedDate,
+        sunRashi: profile?.sunRashi,
+        nakshatra: profile?.birthNakshatra,
+        createdAt: Date.now()
+      };
+      
+      const exists = reminders.some((r: any) => r.name === newReminder.name && r.formattedDate === newReminder.formattedDate);
+      if (!exists) {
+        reminders.push(newReminder);
+        localStorage.setItem('viniyogah_reminders', JSON.stringify(reminders));
+        // Update local alerts state immediately
+        const localAlerts: VedicAlert[] = reminders.map((r: any, idx: number) => ({
+          id: `local-${idx}`,
+          uid: 'local',
+          name: `Vedic Birthday: ${r.name}`,
+          targetDate: r.formattedDate,
+          type: 'birthday',
+          enabled: true,
+          createdAt: r.createdAt || new Date(r.date).getTime()
+        }));
+        setAlerts(localAlerts);
+        console.log("Alert saved successfully to localStorage");
+        setToast({ message: `Reminder set! You will be notified on ${bday.formattedDate}.`, type: 'success' });
+      } else {
+        console.log("Alert already exists in localStorage");
+        setToast({ message: `Reminder already exists for this date.`, type: 'success' });
+      }
     }
 
     // Mock notification if the date is today or tomorrow (for testing/immediate feedback)
@@ -1166,7 +1384,7 @@ function App() {
   }, [notificationPermission]);
 
   return (
-    <div className="min-h-screen bg-[#FDFCFB] text-[#1A1A1A] font-sans selection:bg-primary/20 relative">
+    <div className="min-h-screen bg-[#FDFCFB] text-[#1A1A1A] font-sans selection:bg-primary/20 relative" style={{ cursor: `url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="32" height="44" viewBox="0 0 100 140" fill="none"><defs><linearGradient id="vel-grad" x1="50" y1="5" x2="50" y2="130" gradientUnits="userSpaceOnUse"><stop stop-color="%23F27D26" /><stop offset="1" stop-color="%235E2B97" /></linearGradient></defs><path d="M50 5 C35 35 15 60 15 90 C15 120 35 130 50 130 C65 130 85 120 85 90 C85 60 65 35 50 5 Z" stroke="url(%23vel-grad)" stroke-width="6" /><path d="M50 130V140" stroke="%23F27D26" stroke-width="6" /><path d="M35 75H65" stroke="%23F27D26" stroke-width="4" /><path d="M30 85H70" stroke="%23F27D26" stroke-width="4" /><path d="M35 95H65" stroke="%23F27D26" stroke-width="4" /><circle cx="50" cy="85" r="4" fill="%23F27D26"/></svg>') 16 0, auto` }}>
       {/* Loading Progress Bar */}
       <AnimatePresence>
         {loading && (
@@ -1346,12 +1564,92 @@ function App() {
                     <p className="text-stone-600 text-sm">Tap the <span className="inline-block w-1 h-1 bg-stone-400 rounded-full mx-0.5" /><span className="inline-block w-1 h-1 bg-stone-400 rounded-full mx-0.5" /><span className="inline-block w-1 h-1 bg-stone-400 rounded-full mx-0.5" /> menu, then tap "Install App" or "Add to Home Screen".</p>
                   </div>
                 </div>
+                <div className="flex gap-4">
+                  <div className="w-8 h-8 rounded-full bg-stone-100 flex items-center justify-center flex-shrink-0 font-bold">3</div>
+                  <div>
+                    <p className="font-semibold">On Windows / Mac (Chrome/Edge)</p>
+                    <p className="text-stone-600 text-sm">Click the "Install" button in the app header. This will add Viniyogah to your Desktop and Start Menu with the "Vel" icon as the app icon.</p>
+                  </div>
+                </div>
               </div>
               <button 
                 onClick={() => setShowInstallGuide(false)}
                 className="w-full mt-8 py-4 bg-accent text-white rounded-2xl font-bold hover:bg-accent-dark transition-all shadow-lg shadow-accent/20"
               >
                 Got it!
+              </button>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Alerts Management Modal */}
+      <AnimatePresence>
+        {showSavedAlerts && (
+          <motion.div 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm"
+            onClick={() => setShowSavedAlerts(false)}
+          >
+            <motion.div 
+              initial={{ scale: 0.9, y: 20 }}
+              animate={{ scale: 1, y: 0 }}
+              exit={{ scale: 0.9, y: 20 }}
+              className="bg-white rounded-3xl p-8 max-w-md w-full shadow-2xl max-h-[80vh] overflow-y-auto"
+              onClick={e => e.stopPropagation()}
+            >
+              <div className="flex justify-between items-start mb-6">
+                <div className="p-3 bg-primary/10 rounded-2xl">
+                  <Bell className="w-6 h-6 text-primary" />
+                </div>
+                <button onClick={() => setShowSavedAlerts(false)} className="p-2 hover:bg-stone-100 rounded-full transition-colors">
+                  <X className="w-6 h-6" />
+                </button>
+              </div>
+              <h3 className="text-2xl font-bold mb-2">Saved Alerts</h3>
+              <p className="text-stone-500 text-sm mb-6">Manage your Vedic birthday and planetary transit notifications.</p>
+              
+              <div className="space-y-4">
+                {alerts.length === 0 ? (
+                  <div className="text-center py-10 bg-stone-50 rounded-2xl border border-dashed border-stone-200">
+                    <BellOff className="w-10 h-10 text-stone-300 mx-auto mb-3" />
+                    <p className="text-stone-500 text-sm">No alerts saved yet.</p>
+                  </div>
+                ) : (
+                  alerts.map(alert => (
+                    <div key={alert.id} className="p-4 bg-stone-50 rounded-2xl border border-stone-100 flex items-center justify-between gap-4">
+                      <div className="flex-1 min-w-0">
+                        <p className="font-bold text-stone-800 truncate">{alert.name}</p>
+                        <p className="text-[10px] text-stone-500 uppercase tracking-widest font-bold">
+                          {alert.type} {alert.targetTithi || alert.targetNakshatra || alert.targetDate}
+                        </p>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <button 
+                          onClick={() => toggleAlert(alert)}
+                          className={`w-10 h-6 rounded-full relative transition-colors ${alert.enabled ? 'bg-primary' : 'bg-stone-300'}`}
+                        >
+                          <div className={`absolute top-1 w-4 h-4 bg-white rounded-full transition-all ${alert.enabled ? 'left-5' : 'left-1'}`} />
+                        </button>
+                        <button 
+                          onClick={() => deleteAlert(alert.id)}
+                          className="p-2 text-stone-400 hover:text-red-500 transition-colors"
+                        >
+                          <Trash2 size={16} />
+                        </button>
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+
+              <button 
+                onClick={() => setShowSavedAlerts(false)}
+                className="w-full mt-8 py-4 bg-primary text-white rounded-2xl font-bold hover:bg-primary/90 transition-all shadow-lg shadow-primary/20"
+              >
+                Close
               </button>
             </motion.div>
           </motion.div>
@@ -1390,17 +1688,15 @@ function App() {
                   <span className="hidden md:inline text-[10px] uppercase tracking-widest font-bold">Install</span>
                 </button>
               )}
-              {notificationPermission !== 'granted' && (
                 <button 
-                  id="enable-alerts-button"
-                  onClick={requestNotificationPermission}
+                  id="manage-alerts-button"
+                  onClick={() => setShowSavedAlerts(true)}
                   className="p-2 md:px-3 md:py-1.5 text-primary hover:bg-primary/5 rounded-xl transition-all flex items-center gap-2 cursor-pointer"
-                  title="Enable Alerts"
+                  title="Manage Alerts"
                 >
                   <Bell size={18} />
                   <span className="hidden md:inline text-[10px] uppercase tracking-widest font-bold">Alerts</span>
                 </button>
-              )}
             </div>
 
             <div className="w-px h-6 bg-black/5 hidden sm:block" />
@@ -1428,7 +1724,7 @@ function App() {
                   className="px-3 py-1.5 md:px-4 md:py-2 bg-primary text-white rounded-full text-[10px] md:text-xs font-display font-black tracking-tight flex items-center gap-2 hover:bg-primary/90 transition-all shadow-lg shadow-primary/20 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
                 >
                   <LogIn size={14} />
-                  <span className="hidden xs:inline">Login</span>
+                  <span className="inline">Login</span>
                 </button>
                 <span className="hidden sm:block text-[7px] font-bold text-black/20 uppercase tracking-widest mt-1">Optional for saving</span>
               </div>
@@ -1498,33 +1794,46 @@ function App() {
           animate={{ opacity: 1, y: 0 }}
           className="mb-10 relative"
         >
-          {/* Logo Orange Decorative Label with Large Moon Icon */}
-          <div className="absolute -top-4 left-6 h-7 pl-9 pr-4 bg-accent text-[7px] font-black uppercase tracking-[0.2em] text-white z-10 rounded-full border border-accent/20 shadow-md flex items-center">
+          {/* Logo Silver Decorative Label with Large Moon Icon */}
+          <div className="absolute -top-4 left-6 h-7 pl-9 pr-4 bg-accent text-[7px] font-black uppercase tracking-[0.2em] text-white z-10 rounded-full border border-accent/20 shadow-[0_0_25px_rgba(242,125,38,0.7)] flex items-center">
             {panchangam && (
-              <div className="absolute -left-3 w-10 h-10 flex items-center justify-center drop-shadow-[0_4px_10px_rgba(0,0,0,0.4)]">
-                <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" className="w-full h-full">
-                  {/* Base Moon (Purple - Dark Part) */}
-                  <circle cx="12" cy="12" r="10" fill="#5E2B97" />
+              <div className="absolute -left-3 w-10 h-10 flex items-center justify-center">
+                <div className="relative w-full h-full flex items-center justify-center">
+                  {/* Faint Silver Glow Reflection */}
+                  <div className="absolute inset-0 rounded-full bg-white/60 blur-xl animate-pulse" />
                   
-                  {/* Light Part (Orange) */}
-                  {panchangam.tithiIndex === 14 ? (
-                    /* Full Moon - Entirely Orange */
-                    <circle cx="12" cy="12" r="10" fill="#F27D26" className="drop-shadow-[0_0_5px_rgba(242,125,38,0.6)]" />
-                  ) : panchangam.tithiIndex === 29 ? (
-                    /* New Moon - Entirely Purple (Already handled by base circle) */
-                    null
-                  ) : (
-                    /* Waxing/Waning Phases */
-                    <path 
-                      d={panchangam.tithiIndex < 14 
-                        ? `M 12 2 A 10 10 0 0 1 12 22 A ${Math.abs(10 - (panchangam.tithiIndex / 7) * 10)} 10 0 0 ${panchangam.tithiIndex < 7 ? 1 : 0} 12 2`
-                        : `M 12 2 A 10 10 0 0 0 12 22 A ${Math.abs(10 - ((panchangam.tithiIndex - 15) / 7) * 10)} 10 0 0 ${panchangam.tithiIndex < 22 ? 0 : 1} 12 2`
-                      } 
-                      fill="#F27D26"
-                      className="drop-shadow-[0_0_3px_rgba(242,125,38,0.4)]"
+                  <div className="relative w-8 h-8 rounded-full overflow-hidden shadow-[0_0_20px_rgba(255,255,255,0.9)] border border-white/30">
+                    {/* The Actual Glowing Moon PNG */}
+                    <img 
+                      src="https://www.transparentpng.com/download/moon/moon-free-download-transparent-3.png"
+                      className="w-full h-full object-cover"
+                      referrerPolicy="no-referrer"
                     />
-                  )}
-                </svg>
+                    
+                    {/* Purple Shading Overlay for Phases */}
+                    <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" className="absolute inset-0 w-full h-full">
+                      <defs>
+                        <mask id="moon-shading-mask">
+                          <rect x="0" y="0" width="24" height="24" fill="white" />
+                          {panchangam.tithiIndex === 14 ? (
+                            <circle cx="12" cy="12" r="12" fill="black" />
+                          ) : panchangam.tithiIndex === 29 ? (
+                            null
+                          ) : (
+                            <path 
+                              d={panchangam.tithiIndex < 14 
+                                ? `M 12 0 A 12 12 0 0 1 12 24 A ${Math.abs(12 - (panchangam.tithiIndex / 7.5) * 12)} 12 0 0 ${panchangam.tithiIndex < 7.5 ? 1 : 0} 12 0`
+                                : `M 12 0 A 12 12 0 0 0 12 24 A ${Math.abs(12 - ((panchangam.tithiIndex - 15) / 7.5) * 12)} 12 0 0 ${panchangam.tithiIndex < 22.5 ? 0 : 1} 12 0`
+                              } 
+                              fill="black"
+                            />
+                          )}
+                        </mask>
+                      </defs>
+                      <rect x="0" y="0" width="24" height="24" fill="#3D1B63" opacity="0.85" mask="url(#moon-shading-mask)" />
+                    </svg>
+                  </div>
+                </div>
               </div>
             )}
             Daily Panchangam
@@ -1628,27 +1937,39 @@ function App() {
                         }}
                       >
                         {[...globalUpcoming, ...globalUpcoming, ...globalUpcoming].map((item, idx) => (
-                          <div 
-                            key={`${item.name}-${item.date.getTime()}-${idx}`}
-                            className="bg-white/5 border border-white/10 rounded-[1.5rem] p-2 md:p-3 flex flex-col items-center justify-center hover:bg-white/10 transition-all group w-28 md:w-36 lg:w-44 shrink-0 relative overflow-hidden text-center"
-                          >
-                            <div className="relative z-10 w-full">
-                              <p className="text-[8px] md:text-[10px] font-display font-black tracking-tight uppercase leading-tight line-clamp-1 break-words text-white/90 mb-1">{item.name}</p>
-                            </div>
-                            
-                            <div className="relative z-10">
-                              <div className="flex flex-col items-center">
-                                <div className="flex items-baseline gap-1">
-                                  <span className="text-xl md:text-4xl font-display font-black tracking-tighter text-accent group-hover:scale-110 transition-transform">{format(item.date, 'dd')}</span>
-                                  <span className="text-[8px] md:text-[10px] uppercase font-bold text-white/60">{format(item.date, 'MMM')}</span>
+                          <React.Fragment key={`${item.name}-${item.date.getTime()}-${idx}`}>
+                            <div className="flex items-center gap-3 md:gap-4">
+                              <div className="bg-white/5 border border-white/10 rounded-[1.5rem] p-2 md:p-3 flex flex-col items-center justify-center hover:bg-white/10 transition-all group w-28 md:w-36 lg:w-44 shrink-0 relative overflow-hidden text-center">
+                                <div className="relative z-10 w-full">
+                                  <p className="text-[8px] md:text-[10px] font-display font-black tracking-tight uppercase leading-tight line-clamp-1 break-words text-white/90 mb-1">{item.name}</p>
                                 </div>
-                                <div className="flex items-center gap-1 mt-0.5">
-                                  <Zap size={8} className="text-accent" />
-                                  <span className="text-[7px] md:text-[9px] uppercase tracking-widest font-bold text-white/40">{item.nakshatra}</span>
+                                
+                                <div className="relative z-10">
+                                  <div className="flex flex-col items-center">
+                                    <div className="flex items-baseline gap-1">
+                                      <span className="text-xl md:text-4xl font-display font-black tracking-tighter text-accent group-hover:scale-110 transition-transform">{format(item.date, 'dd')}</span>
+                                      <span className="text-[8px] md:text-[10px] uppercase font-bold text-white/60">{format(item.date, 'MMM')}</span>
+                                    </div>
+                                    <div className="flex items-center gap-1 mt-0.5">
+                                      <Zap size={8} className="text-accent" />
+                                      <span className="text-[7px] md:text-[9px] uppercase tracking-widest font-bold text-white/40">{item.nakshatra}</span>
+                                    </div>
+                                  </div>
                                 </div>
                               </div>
                             </div>
-                          </div>
+                            {/* End Limiter after each full list cycle */}
+                            {(idx + 1) % globalUpcoming.length === 0 && (
+                              <div className="flex items-center justify-center px-6 md:px-10 shrink-0">
+                                <div className="relative">
+                                  <div className="absolute inset-0 blur-xl bg-accent/40 rounded-full" />
+                                  <div className="relative z-10 p-2 border border-white/20 rounded-full bg-white/5">
+                                    <Moon size={16} className="text-accent opacity-80" />
+                                  </div>
+                                </div>
+                              </div>
+                            )}
+                          </React.Fragment>
                         ))}
                       </motion.div>
                       
@@ -1845,21 +2166,13 @@ function App() {
                   <div className="flex flex-col gap-3">
                       <div className="flex gap-3">
                         <button 
-                          id="save-profile-button"
-                          onClick={handleSave}
-                          disabled={!profile || saving}
-                          className="flex-1 bg-primary text-white rounded-xl py-4 font-semibold hover:bg-primary/90 transition-colors flex items-center justify-center gap-2 group disabled:opacity-50 relative overflow-hidden shadow-lg shadow-primary/20 cursor-pointer"
-                        >
-                          {saving ? <RefreshCw size={18} className="animate-spin" /> : <Save size={18} />}
-                          <span>{saving ? 'Saving...' : 'Save Profile'}</span>
-                        </button>
-                        <button 
                           id="clear-all-button"
                           onClick={handleClear}
-                          className="px-4 bg-white border border-black/10 text-black/40 hover:text-red-500 hover:border-red-200 rounded-xl transition-all cursor-pointer"
+                          className="w-full px-4 py-4 bg-white border border-black/10 text-black/40 hover:text-red-500 hover:border-red-200 rounded-xl transition-all cursor-pointer flex items-center justify-center gap-2"
                           title="Clear All"
                         >
                           <Trash2 size={20} />
+                          <span className="font-bold uppercase tracking-widest text-[10px]">Clear All Details</span>
                         </button>
                       </div>
                   </div>
@@ -1994,25 +2307,27 @@ function App() {
                             <Moon size={18} />
                             <span className="text-[10px] uppercase tracking-widest font-display font-bold">Moon Nakshatra</span>
                           </div>
-                          <p className="text-2xl font-bold">{profile.birthNakshatra}</p>
+                          <p className={`font-bold leading-tight ${profile.birthNakshatra.length > 12 ? 'text-lg md:text-xl' : 'text-2xl'}`}>
+                            {profile.birthNakshatra.length > 15 ? NAKSHATRA_SHORT[profile.moonNakshatraIndex] : profile.birthNakshatra}
+                          </p>
                         </div>
                       </div>
 
                       {profile.rahu && profile.ketu && (
-                        <div className="hidden sm:grid grid-cols-2 gap-4">
-                          <div className="space-y-3 p-6 bg-black/5 rounded-3xl border border-black/5 relative overflow-hidden group">
+                        <div className="grid grid-cols-2 gap-4">
+                          <div className="space-y-3 p-4 md:p-6 bg-black/5 rounded-3xl border border-black/5 relative overflow-hidden group flex flex-col items-center text-center">
                             <div className="flex items-center gap-2 text-red-500">
                               <Zap size={18} />
                               <span className="text-[10px] uppercase tracking-widest font-display font-bold">Rahu</span>
                             </div>
-                            <p className="text-2xl font-bold">{profile.rahu.rashi}</p>
+                            <p className="text-lg md:text-2xl font-bold w-full truncate">{profile.rahu.rashi}</p>
                           </div>
-                          <div className="space-y-3 p-6 bg-black/5 rounded-3xl border border-black/5 relative overflow-hidden group">
+                          <div className="space-y-3 p-4 md:p-6 bg-black/5 rounded-3xl border border-black/5 relative overflow-hidden group flex flex-col items-center text-center">
                             <div className="flex items-center gap-2 text-indigo-500">
                               <Zap size={18} />
                               <span className="text-[10px] uppercase tracking-widest font-display font-bold">Ketu</span>
                             </div>
-                            <p className="text-2xl font-bold">{profile.ketu.rashi}</p>
+                            <p className="text-lg md:text-2xl font-bold w-full truncate">{profile.ketu.rashi}</p>
                           </div>
                         </div>
                       )}
@@ -2050,39 +2365,67 @@ function App() {
                       <h3 className="text-[10px] uppercase tracking-widest font-display font-bold text-stone-400">Raw Planetary Data (Sidereal)</h3>
                       <span className="text-[8px] text-stone-300">Lahiri Ayanamsa: {profile.ayanamsa?.toFixed(4)}°</span>
                     </div>
-                    <div className="overflow-x-auto">
-                      <table className="w-full text-left text-[10px] font-mono">
-                        <thead>
-                          <tr className="border-b border-stone-200 text-stone-400">
-                            <th className="pb-2 font-medium">Planet</th>
-                            <th className="pb-2 font-medium">Longitude</th>
-                            <th className="pb-2 font-medium">Rashi</th>
-                            <th className="pb-2 font-medium">Degree</th>
-                            <th className="pb-2 font-medium">Nakshatra</th>
-                          </tr>
-                        </thead>
-                        <tbody className="text-stone-600">
-                          {profile.planets.map(p => (
-                            <tr key={p.name} className="border-b border-stone-100 last:border-0">
-                              <td className="py-2 font-bold text-indigo-deep">{p.name}</td>
-                              <td className="py-2">{(p.longitude || 0).toFixed(2)}°</td>
-                              <td className="py-2">{p.rashi}</td>
-                              <td className="py-2">{(p.longitude % 30).toFixed(2)}°</td>
-                              <td className="py-2">{getNakshatra(p.longitude).name}</td>
+                    {profile.tobUnknown ? (
+                      <div className="py-8 text-center border-2 border-dashed border-stone-200 rounded-2xl">
+                        <Clock size={24} className="mx-auto text-stone-300 mb-2" />
+                        <p className="text-[10px] text-stone-400 uppercase tracking-widest font-bold">Time of Birth Required for Raw Data</p>
+                      </div>
+                    ) : (
+                      <div className="overflow-x-auto -mx-6 px-6">
+                        <table className="w-full text-left text-[9px] md:text-[10px] font-mono border-collapse">
+                          <thead>
+                            <tr className="border-b border-stone-200 text-stone-400">
+                              <th className="pb-2 font-medium">Planet</th>
+                              <th className="pb-2 font-medium">Long</th>
+                              <th className="pb-2 font-medium">Rashi</th>
+                              <th className="pb-2 font-medium">Deg</th>
+                              <th className="pb-2 font-medium">Nakshatra</th>
+                              <th className="pb-2 font-medium">Navamsha (D9)</th>
+                              <th className="pb-2 font-medium">Dashamsha (D10)</th>
                             </tr>
-                          ))}
-                          {profile.lagna && (
-                            <tr className="bg-accent/5">
-                              <td className="py-2 font-bold text-accent">Lagna (Asc)</td>
-                              <td className="py-2">{(profile.lagna.longitude || 0).toFixed(2)}°</td>
-                              <td className="py-2">{profile.lagna.rashi}</td>
-                              <td className="py-2">{(profile.lagna.longitude % 30).toFixed(2)}°</td>
-                              <td className="py-2">{getNakshatra(profile.lagna.longitude).name}</td>
-                            </tr>
-                          )}
-                        </tbody>
-                      </table>
-                    </div>
+                          </thead>
+                          <tbody className="text-stone-600">
+                            {profile.planets.map(p => {
+                              const nak = getNakshatra(p.longitude);
+                              return (
+                                <tr key={p.name} className="border-b border-stone-100 last:border-0">
+                                  <td className="py-2 font-bold text-indigo-deep">{p.name}</td>
+                                  <td className="py-2">{(p.longitude || 0).toFixed(1)}°</td>
+                                  <td className="py-2">
+                                    <span className="hidden md:inline">{p.rashi}</span>
+                                    <span className="md:hidden">{RASHI_SHORT[p.rashiIndex]}</span>
+                                  </td>
+                                  <td className="py-2">{(p.longitude % 30).toFixed(1)}°</td>
+                                  <td className="py-2">
+                                    <span className="hidden md:inline">{nak.name}</span>
+                                    <span className="md:hidden">{NAKSHATRA_SHORT[nak.index]}</span>
+                                  </td>
+                                  <td className="py-2 font-bold text-primary">{p.navamsha}</td>
+                                  <td className="py-2 font-bold text-accent">{p.dashamsha}</td>
+                                </tr>
+                              );
+                            })}
+                            {profile.lagna && (
+                              <tr className="bg-accent/5">
+                                <td className="py-2 font-bold text-accent">Lagna</td>
+                                <td className="py-2">{(profile.lagna.longitude || 0).toFixed(1)}°</td>
+                                <td className="py-2">
+                                  <span className="hidden md:inline">{profile.lagna.rashi}</span>
+                                  <span className="md:hidden">{RASHI_SHORT[profile.lagna.rashiIndex]}</span>
+                                </td>
+                                <td className="py-2">{(profile.lagna.longitude % 30).toFixed(1)}°</td>
+                                <td className="py-2">
+                                  <span className="hidden md:inline">{getNakshatra(profile.lagna.longitude).name}</span>
+                                  <span className="md:hidden">{NAKSHATRA_SHORT[getNakshatra(profile.lagna.longitude).index]}</span>
+                                </td>
+                                <td className="py-2 font-black text-accent underline decoration-accent/30 underline-offset-4">{profile.lagna.navamsha}</td>
+                                <td className="py-2 font-black text-primary underline decoration-primary/30 underline-offset-4">{profile.lagna.dashamsha}</td>
+                              </tr>
+                            )}
+                          </tbody>
+                        </table>
+                      </div>
+                    )}
                   </div>
                 </motion.div>
               ) : (
@@ -2124,7 +2467,7 @@ function App() {
                 nakshatra={profile.birthNakshatra}
                 sunRashi={profile.sunRashi}
                 birthdayDate={upcoming[0].formattedDate}
-                planetaryPositions={profile.planets}
+                planetaryPositions={profile.upcomingPlanets || profile.planets}
               />
             )}
 
@@ -2159,9 +2502,9 @@ function App() {
                           <Share2 size={14} />
                         </button>
                         <button 
-                          onClick={(e) => {
+                          onClick={async (e) => {
                             e.stopPropagation();
-                            scheduleNotification(bday);
+                            await scheduleNotification(bday);
                           }}
                           className="py-1.5 px-3 rounded-lg hover:bg-primary/10 text-black/20 hover:text-primary transition-all"
                         >
@@ -2240,6 +2583,23 @@ function App() {
 
       {/* AI Vedic Chat Assistant */}
       <VedicChat />
+
+      {/* Toast Notification */}
+      <AnimatePresence>
+        {toast && (
+          <motion.div
+            initial={{ opacity: 0, y: 50, x: '-50%' }}
+            animate={{ opacity: 1, y: 0, x: '-50%' }}
+            exit={{ opacity: 0, y: 50, x: '-50%' }}
+            className={`fixed bottom-8 left-1/2 z-[200] px-6 py-3 rounded-2xl shadow-2xl flex items-center gap-3 border ${
+              toast.type === 'success' ? 'bg-white border-primary/20 text-primary' : 'bg-red-50 border-red-100 text-red-600'
+            }`}
+          >
+            {toast.type === 'success' ? <Bell size={18} className="animate-glow-orange" /> : <AlertCircle size={18} />}
+            <span className="text-xs font-display font-bold uppercase tracking-widest">{toast.message}</span>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

@@ -1,5 +1,5 @@
 import * as React from 'react';
-import { useMapsLibrary } from '@vis.gl/react-google-maps';
+import { Search, Loader2, MapPin } from 'lucide-react';
 
 export interface PlaceResult {
   address: string;
@@ -15,95 +15,120 @@ interface PlaceSearchProps {
   defaultValue?: string;
 }
 
-export function PlaceSearch({ onPlaceSelect, disabled, defaultValue }: PlaceSearchProps) {
-  const placesLib = useMapsLibrary('places');
-  const geocodingLib = useMapsLibrary('geocoding');
-  const inputRef = React.useRef<HTMLInputElement>(null);
-  const onPlaceSelectRef = React.useRef(onPlaceSelect);
-  
-  // Keep the ref up to date
-  React.useEffect(() => {
-    onPlaceSelectRef.current = onPlaceSelect;
-  }, [onPlaceSelect]);
+interface NominatimResult {
+  display_name: string;
+  lat: string;
+  lon: string;
+  place_id: number;
+}
 
-  // Update input value when defaultValue changes from outside
+export function PlaceSearch({ onPlaceSelect, disabled, defaultValue }: PlaceSearchProps) {
+  const [query, setQuery] = React.useState(defaultValue || '');
+  const [results, setResults] = React.useState<NominatimResult[]>([]);
+  const [isLoading, setIsLoading] = React.useState(false);
+  const [isOpen, setIsOpen] = React.useState(false);
+  const containerRef = React.useRef<HTMLDivElement>(null);
+  const debounceTimerRef = React.useRef<NodeJS.Timeout | null>(null);
+
   React.useEffect(() => {
-    if (inputRef.current && defaultValue !== undefined && inputRef.current.value !== defaultValue) {
-      inputRef.current.value = defaultValue;
+    if (defaultValue !== undefined) {
+      setQuery(defaultValue);
     }
   }, [defaultValue]);
 
   React.useEffect(() => {
-    if (!placesLib || !inputRef.current) return;
-
-    const autocomplete = new placesLib.Autocomplete(inputRef.current, {
-      fields: ['formatted_address', 'geometry', 'name'],
-    });
-
-    const listener = autocomplete.addListener('place_changed', () => {
-      const place = autocomplete.getPlace();
-      if (place.geometry?.location) {
-        onPlaceSelectRef.current({
-          address: place.formatted_address || place.name || '',
-          coords: {
-            lat: place.geometry.location.lat(),
-            lng: place.geometry.location.lng(),
-          },
-        });
-      }
-    });
-
-    return () => {
-      if (window.google?.maps?.event && listener) {
-        listener.remove();
+    const handleClickOutside = (event: MouseEvent) => {
+      if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
+        setIsOpen(false);
       }
     };
-  }, [placesLib]);
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
-  const handleBlur = async () => {
-    if (!geocodingLib || !inputRef.current?.value) return;
-    
-    // Small delay to allow place_changed to fire first if it was a selection
-    setTimeout(async () => {
-      const geocoder = new geocodingLib.Geocoder();
-      try {
-        const result = await geocoder.geocode({ address: inputRef.current!.value });
-        if (result.results && result.results[0]) {
-          const first = result.results[0];
-          onPlaceSelectRef.current({
-            address: first.formatted_address,
-            coords: {
-              lat: first.geometry.location.lat(),
-              lng: first.geometry.location.lng(),
-            },
-          });
-        }
-      } catch (e) {
-        console.error('Geocoding failed on blur:', e);
-      }
-    }, 200);
+  const searchPlaces = async (searchQuery: string) => {
+    if (searchQuery.length < 3) {
+      setResults([]);
+      return;
+    }
+
+    setIsLoading(true);
+    try {
+      const response = await fetch(
+        `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(searchQuery)}&limit=5&addressdetails=1`
+      );
+      const data = await response.json();
+      setResults(data);
+      setIsOpen(true);
+    } catch (error) {
+      console.error('Nominatim search failed:', error);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    // Update the address string in the parent, but without coordinates yet
-    // This provides immediate feedback in the UI
-    onPlaceSelectRef.current({
-      address: e.target.value,
-      coords: null as any // Parent should handle null coords as "not yet geocoded"
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    setQuery(value);
+
+    if (debounceTimerRef.current) {
+      clearTimeout(debounceTimerRef.current);
+    }
+
+    debounceTimerRef.current = setTimeout(() => {
+      searchPlaces(value);
+    }, 500);
+  };
+
+  const handleSelect = (result: NominatimResult) => {
+    setQuery(result.display_name);
+    setIsOpen(false);
+    onPlaceSelect({
+      address: result.display_name,
+      coords: {
+        lat: parseFloat(result.lat),
+        lng: parseFloat(result.lon),
+      },
     });
   };
 
   return (
-    <input
-      ref={inputRef}
-      type="text"
-      disabled={disabled}
-      onBlur={handleBlur}
-      onChange={handleChange}
-      placeholder="Search for your birth city..."
-      className={`w-full bg-white border border-black/10 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all ${
-        disabled ? 'opacity-40 cursor-not-allowed' : ''
-      }`}
-    />
+    <div ref={containerRef} className="relative w-full">
+      <div className="relative">
+        <input
+          type="text"
+          value={query}
+          disabled={disabled}
+          onChange={handleInputChange}
+          onFocus={() => query.length >= 3 && results.length > 0 && setIsOpen(true)}
+          placeholder="Search for your birth city..."
+          className={`w-full bg-white border border-black/10 rounded-xl pl-11 pr-4 py-3 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all ${
+            disabled ? 'opacity-40 cursor-not-allowed' : ''
+          }`}
+        />
+        <div className="absolute left-4 top-1/2 -translate-y-1/2 text-black/40">
+          {isLoading ? (
+            <Loader2 className="w-4 h-4 animate-spin" />
+          ) : (
+            <Search className="w-4 h-4" />
+          )}
+        </div>
+      </div>
+
+      {isOpen && results.length > 0 && (
+        <div className="absolute z-50 w-full mt-2 bg-white border border-black/10 rounded-xl shadow-xl overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200">
+          {results.map((result) => (
+            <button
+              key={result.place_id}
+              onClick={() => handleSelect(result)}
+              className="w-full text-left px-4 py-3 hover:bg-stone-50 flex items-start gap-3 transition-colors border-b border-black/5 last:border-0"
+            >
+              <MapPin className="w-4 h-4 mt-1 text-primary shrink-0" />
+              <span className="text-sm text-stone-700 line-clamp-2">{result.display_name}</span>
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
   );
 }

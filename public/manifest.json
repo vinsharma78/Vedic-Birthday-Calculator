@@ -5,31 +5,31 @@
   "version": "1.1.0",
   "icons": [
     {
-      "src": "/branding/favicon-v9.png?v=11",
+      "src": "/branding/favicon-v9.png",
       "type": "image/png",
       "sizes": "32x32",
       "purpose": "any"
     },
     {
-      "src": "/branding/viniyogah-vel-192.png?v=11",
+      "src": "/branding/viniyogah-vel-192.png",
       "type": "image/png",
       "sizes": "192x192",
       "purpose": "any"
     },
     {
-      "src": "/branding/viniyogah-vel-512.png?v=11",
+      "src": "/branding/viniyogah-vel-512.png",
       "type": "image/png",
       "sizes": "512x512",
       "purpose": "any"
     },
     {
-      "src": "/branding/viniyogah-vel-192.png?v=11",
+      "src": "/branding/viniyogah-vel-192.png",
       "type": "image/png",
       "sizes": "192x192",
       "purpose": "maskable"
     },
     {
-      "src": "/branding/viniyogah-vel-512.png?v=11",
+      "src": "/branding/viniyogah-vel-512.png",
       "type": "image/png",
       "sizes": "512x512",
       "purpose": "maskable"

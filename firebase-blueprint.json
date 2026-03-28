@@ -37,6 +37,20 @@
         "createdAt": { "type": "string", "format": "date-time", "description": "When the profile was created" }
       },
       "required": ["uid", "name", "dob", "moonNakshatraIndex", "moonRashiIndex", "sunRashiIndex", "birthNakshatra", "sunRashi", "moonRashi"]
+    },
+    "Alert": {
+      "title": "Alert",
+      "description": "A saved Vedic birthday or transit alert",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string", "description": "Owner's user ID" },
+        "name": { "type": "string", "description": "Alert name" },
+        "targetDate": { "type": "string", "description": "Target date for the alert" },
+        "type": { "type": "string", "enum": ["birthday", "transit", "tithi"], "description": "Type of alert" },
+        "enabled": { "type": "boolean", "description": "Whether the alert is enabled" },
+        "createdAt": { "type": "string", "format": "date-time", "description": "When the alert was created" }
+      },
+      "required": ["uid", "name", "targetDate", "type", "enabled", "createdAt"]
     }
   },
   "firestore": {
@@ -47,6 +61,10 @@
     "/profiles/{profileId}": {
       "schema": "BirthProfile",
       "description": "Saved birth profiles"
+    },
+    "/alerts/{alertId}": {
+      "schema": "Alert",
+      "description": "Saved alerts"
     }
   }
 }

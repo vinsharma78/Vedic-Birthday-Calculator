@@ -82,7 +82,7 @@ export const AuspiciousGuidance: React.FC<AuspiciousGuidanceProps> = ({
       {guidance && (
         <div className="space-y-4">
           <div className={`relative overflow-hidden transition-all duration-500 ${isExpanded ? 'max-h-[2000px]' : 'max-h-[200px]'}`}>
-            <div className="prose prose-sm prose-stone max-w-none prose-headings:font-display prose-headings:tracking-tight prose-headings:font-black prose-p:text-black/70 prose-strong:text-primary">
+            <div className="prose max-w-none">
               <Markdown>{guidance}</Markdown>
             </div>
             {!isExpanded && (

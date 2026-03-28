@@ -31,6 +31,16 @@ service cloud.firestore {
     //   - sunRashi: string (required, max: 50) - Sun rashi name
     //   - createdAt: timestamp (required, immutable) - When the profile was created
     //
+    // Collection: alerts
+    // Document ID: alertId (auto-generated)
+    // Fields:
+    //   - uid: string (required, immutable) - Owner's user ID
+    //   - name: string (required, max: 200) - Alert name
+    //   - targetDate: string (required) - Target date
+    //   - type: string (required, enum: ['birthday', 'transit', 'tithi']) - Alert type
+    //   - enabled: bool (required) - Whether alert is enabled
+    //   - createdAt: timestamp (required, immutable) - When the alert was created
+    //
     // ===============================================================
 
     // ===============================================================
@@ -124,6 +134,16 @@ service cloud.firestore {
              data.createdAt is timestamp;
     }
 
+    function isValidAlert(data) {
+      return hasOnlyAllowedFields(['uid', 'name', 'targetDate', 'type', 'enabled', 'createdAt']) &&
+             data.uid is string && data.uid.size() > 0 &&
+             data.name is string && data.name.size() > 0 && data.name.size() <= 200 &&
+             data.targetDate is string && data.targetDate.size() > 0 &&
+             data.type in ['birthday', 'transit', 'tithi'] &&
+             data.enabled is bool &&
+             (data.createdAt is timestamp || data.createdAt is number);
+    }
+
     // ===============================================================
     // Collection Rules
     // ===============================================================
@@ -139,6 +159,13 @@ service cloud.firestore {
       allow read: if isDocOwner() || isAdmin();
       allow create: if isAuthenticated() && isValidProfile(request.resource.data) && request.resource.data.uid == request.auth.uid;
       allow update: if isAuthenticated() && isValidProfile(request.resource.data) && areImmutableFieldsUnchanged(['uid']) && (isDocOwner() || isAdmin());
+      allow delete: if isDocOwner() || isAdmin();
+    }
+
+    match /alerts/{alertId} {
+      allow read: if isDocOwner() || isAdmin();
+      allow create: if isAuthenticated() && isValidAlert(request.resource.data) && request.resource.data.uid == request.auth.uid;
+      allow update: if isAuthenticated() && isValidAlert(request.resource.data) && areImmutableFieldsUnchanged(['uid']) && (isDocOwner() || isAdmin());
       allow delete: if isDocOwner() || isAdmin();
     }
 

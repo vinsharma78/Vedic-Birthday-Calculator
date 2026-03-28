@@ -34,7 +34,8 @@ export const getNakshatraProfile = async (nakshatra: string) => {
   1. Core personality characteristics.
   2. Spiritual strengths and life purpose.
   3. Career and relationship tendencies.
-  4. A short piece of wisdom or mantra for this star.
+  4. **FAMOUS PERSONALITIES**: Provide a dedicated section listing famous global or Indian personalities born in this Nakshatra. This is a key requirement.
+  5. A short piece of wisdom or mantra for this star.
   
   Keep the tone respectful, mystical, and encouraging. Use Markdown for formatting.`;
 
@@ -69,8 +70,14 @@ export const getAuspiciousGuidance = async (
   Their birth details: Nakshatra: ${nakshatra}, Sun Rashi: ${sunRashi}.
   ${planetsStr}
   
-  Explain why this specific day is auspicious for them and what spiritual activities or reflections they should focus on. 
-  Keep it personal and insightful. Use Markdown for formatting.`;
+  CRITICAL: On this specific day (the Vedic birthday), the Sun and Moon are in the same relative positions as they were at birth. However, other planets (Mars, Mercury, Jupiter, Venus, Saturn, Rahu, Ketu) are transiting in their current positions for this date.
+  
+  Please provide a reading that:
+  1. Acknowledges the Sun and Moon's alignment with the birth positions.
+  2. Interprets the significance of the other planets based on their actual transits on this day (as provided in the planetary alignments).
+  3. Explains why this specific day is auspicious for them and what spiritual activities or reflections they should focus on. 
+  
+  Keep it personal, insightful, and rooted in Vedic astrological principles. Use Markdown for formatting.`;
 
   const result = await withRetry(async () => {
     const response = await ai.models.generateContent({

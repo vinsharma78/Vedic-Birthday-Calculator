@@ -38,9 +38,13 @@ export const VedicChat: React.FC = () => {
       
       const response = await getVedicWisdomAnswer(userMessage, history);
       setMessages(prev => [...prev, { role: 'model', text: response || "I'm sorry, I couldn't find an answer in the stars." }]);
-    } catch (err) {
+    } catch (err: any) {
       console.error("Chat error:", err);
-      setMessages(prev => [...prev, { role: 'model', text: "The cosmic connection is weak. Please try again later." }]);
+      let errorMsg = "The cosmic connection is weak. Please try again later.";
+      if (err.message?.includes('429') || err.message?.toLowerCase().includes('quota')) {
+        errorMsg = "The Guru is currently busy with many seekers. Please try again in a few moments.";
+      }
+      setMessages(prev => [...prev, { role: 'model', text: errorMsg }]);
     } finally {
       setLoading(false);
     }
@@ -84,7 +88,7 @@ export const VedicChat: React.FC = () => {
                       ? 'bg-primary text-white rounded-tr-none' 
                       : 'bg-stone-50 text-black/80 rounded-tl-none border border-stone-100'
                   }`}>
-                    <div className="prose prose-sm prose-stone max-w-none prose-p:leading-relaxed prose-strong:text-accent">
+                    <div className="prose max-w-none">
                       <Markdown>{m.text}</Markdown>
                     </div>
                   </div>
