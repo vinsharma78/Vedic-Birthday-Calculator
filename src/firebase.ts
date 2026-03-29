@@ -34,6 +34,11 @@ export const signInWithGoogle = async () => {
 
 export const setupRecaptcha = (containerId: string) => {
   if (!(window as any).recaptchaVerifier) {
+    const container = document.getElementById(containerId);
+    if (!container) {
+      console.error(`reCAPTCHA container with id "${containerId}" not found in the DOM.`);
+      throw new Error(`reCAPTCHA container not found. Please try refreshing the page.`);
+    }
     (window as any).recaptchaVerifier = new RecaptchaVerifier(auth, containerId, {
       'size': 'invisible',
       'callback': (response: any) => {

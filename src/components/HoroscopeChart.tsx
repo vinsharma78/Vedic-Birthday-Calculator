@@ -44,6 +44,10 @@ interface PlanetPosition {
   rashi: string;
   rashiIndex: number;
   longitude: number;
+  navamsha?: string;
+  navamshaIndex?: number;
+  dashamsha?: string;
+  dashamshaIndex?: number;
 }
 
 interface HoroscopeChartProps {
@@ -60,9 +64,9 @@ interface HoroscopeChartProps {
   pob: string;
   pobUnknown: boolean;
   pobCoords?: { lat: number; lng: number };
-  rahu?: { longitude: number; rashi: string; rashiIndex: number };
-  ketu?: { longitude: number; rashi: string; rashiIndex: number };
-  lagna?: { longitude: number; rashi: string; rashiIndex: number };
+  rahu?: { longitude: number; rashi: string; rashiIndex: number; navamshaIndex?: number; dashamshaIndex?: number };
+  ketu?: { longitude: number; rashi: string; rashiIndex: number; navamshaIndex?: number; dashamshaIndex?: number };
+  lagna?: { longitude: number; rashi: string; rashiIndex: number; navamshaIndex?: number; dashamshaIndex?: number };
   planets?: PlanetPosition[];
 }
 
@@ -93,6 +97,8 @@ const CHART_LAYOUT = [
   [8, 7, 6, 5]
 ];
 
+type ChartType = 'D1' | 'D9' | 'D10';
+
 export const HoroscopeChart: React.FC<HoroscopeChartProps> = ({ 
   name, 
   sunRashi, 
@@ -112,6 +118,8 @@ export const HoroscopeChart: React.FC<HoroscopeChartProps> = ({
   lagna,
   planets
 }) => {
+  const [chartType, setChartType] = React.useState<ChartType>('D1');
+
   // Only show chart if ToB and PoB are provided
   if (tobUnknown || pobUnknown || !pob) {
     return (
@@ -130,10 +138,26 @@ export const HoroscopeChart: React.FC<HoroscopeChartProps> = ({
   }
 
   const getPlanetsInRashi = (index: number) => {
-    const list = [...(planets || [])];
+    const list: PlanetPosition[] = [];
     
-    // Add Lagna to the list for display in the boxes
-    if (lagna && lagna.rashiIndex === index && !list.find(p => p.name === 'Lagna')) {
+    // Helper to get correct rashi index based on chart type
+    const getTargetRashiIndex = (p: any) => {
+      if (chartType === 'D9') return p.navamshaIndex;
+      if (chartType === 'D10') return p.dashamshaIndex;
+      return p.rashiIndex;
+    };
+
+    // Process planets
+    if (planets) {
+      planets.forEach(p => {
+        if (getTargetRashiIndex(p) === index) {
+          list.push(p);
+        }
+      });
+    }
+    
+    // Add Lagna
+    if (lagna && getTargetRashiIndex(lagna) === index) {
       list.push({ 
         name: 'Lagna', 
         symbol: 'L', 
@@ -143,7 +167,7 @@ export const HoroscopeChart: React.FC<HoroscopeChartProps> = ({
       });
     }
     
-    return list.filter(p => p.rashiIndex === index);
+    return list;
   };
 
   const getPlanetLabel = (name: string) => {
@@ -264,6 +288,24 @@ export const HoroscopeChart: React.FC<HoroscopeChartProps> = ({
             <span className="text-[8px] md:text-[10px] uppercase tracking-[0.2em] md:tracking-[0.3em] font-light">Janma Kundali</span>
           </div>
           <h2 className="text-3xl md:text-4xl font-sans font-light text-indigo-deep tracking-tight">Birth Chart</h2>
+          
+          {/* Chart Type Toggle */}
+          <div className="flex items-center gap-1 bg-stone-100 p-1 rounded-xl w-fit">
+            {(['D1', 'D9', 'D10'] as ChartType[]).map((type) => (
+              <button
+                key={type}
+                onClick={() => setChartType(type)}
+                className={`px-4 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-widest transition-all ${
+                  chartType === type 
+                    ? 'bg-white text-accent shadow-sm' 
+                    : 'text-stone-400 hover:text-stone-600'
+                }`}
+              >
+                {type === 'D1' ? 'Rashi (D1)' : type === 'D9' ? 'Navamsha (D9)' : 'Dashamsha (D10)'}
+              </button>
+            ))}
+          </div>
+
           <p className="text-stone-400 max-w-md font-sans italic text-base md:text-lg">
             A sacred South Indian representation of planetary positions for <span className="text-accent font-light">{name}</span>.
           </p>
@@ -297,11 +339,13 @@ export const HoroscopeChart: React.FC<HoroscopeChartProps> = ({
                 if (rowIndex === 1 && colIndex === 1) {
                   return (
                     <div key="center" className="col-span-2 row-span-2 flex flex-col items-center justify-center p-2 md:p-4 text-center bg-indigo-deep/[0.02] rounded-xl md:rounded-3xl border border-indigo-deep/5 relative">
-                      {/* D1 Label */}
+                      {/* Chart Type Label */}
                       <div className="absolute top-2 left-2 md:top-4 md:left-4">
                         <span className="text-[6px] md:text-[8px] font-display font-black uppercase tracking-widest">
-                          <span className="text-accent">D1</span>
-                          <span className="text-indigo-deep/20 ml-1">/ Lagna</span>
+                          <span className="text-accent">{chartType}</span>
+                          <span className="text-indigo-deep/20 ml-1">
+                            {chartType === 'D1' ? '/ Lagna' : chartType === 'D9' ? '/ Navamsha' : '/ Dashamsha'}
+                          </span>
                         </span>
                       </div>
                       

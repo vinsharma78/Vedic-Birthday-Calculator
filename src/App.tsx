@@ -154,10 +154,10 @@ interface BirthProfile {
   moonRashi: string;
   moonNakshatraIndex: number;
   moonRashiIndex: number;
-  rahu?: { longitude: number; rashi: string; rashiIndex: number; navamsha: string; dashamsha: string };
-  ketu?: { longitude: number; rashi: string; rashiIndex: number; navamsha: string; dashamsha: string };
-  lagna?: { longitude: number; rashi: string; rashiIndex: number; navamsha: string; dashamsha: string };
-  planets: { name: string; symbol: string; rashi: string; rashiIndex: number; longitude: number; navamsha: string; dashamsha: string }[];
+  rahu?: { longitude: number; rashi: string; rashiIndex: number; navamsha: string; navamshaIndex: number; dashamsha: string; dashamshaIndex: number };
+  ketu?: { longitude: number; rashi: string; rashiIndex: number; navamsha: string; navamshaIndex: number; dashamsha: string; dashamshaIndex: number };
+  lagna?: { longitude: number; rashi: string; rashiIndex: number; navamsha: string; navamshaIndex: number; dashamsha: string; dashamshaIndex: number };
+  planets: { name: string; symbol: string; rashi: string; rashiIndex: number; longitude: number; navamsha: string; navamshaIndex: number; dashamsha: string; dashamshaIndex: number }[];
   upcomingPlanets?: { name: string; rashi: string; rashiIndex: number; longitude: number }[];
   ayanamsa?: number;
 }
@@ -917,15 +917,15 @@ function App() {
         const tobString = tobUnknown ? '12:00' : tob.split(':').map(p => p.padStart(2, '0')).join(':');
 
     const planetsData = [
-          { name: 'Sun', symbol: 'Su', rashi: pos.sun.rashi, rashiIndex: pos.sun.rashiIndex, longitude: pos.sun.longitude, navamsha: pos.sun.navamsha, dashamsha: pos.sun.dashamsha },
-          { name: 'Moon', symbol: 'Mo', rashi: pos.moon.rashi, rashiIndex: pos.moon.rashiIndex, longitude: pos.moon.longitude, navamsha: pos.moon.navamsha, dashamsha: pos.moon.dashamsha },
-          { name: 'Mars', symbol: 'Ma', rashi: pos.mars.rashi, rashiIndex: pos.mars.rashiIndex, longitude: pos.mars.longitude, navamsha: pos.mars.navamsha, dashamsha: pos.mars.dashamsha },
-          { name: 'Mercury', symbol: 'Me', rashi: pos.mercury.rashi, rashiIndex: pos.mercury.rashiIndex, longitude: pos.mercury.longitude, navamsha: pos.mercury.navamsha, dashamsha: pos.mercury.dashamsha },
-          { name: 'Jupiter', symbol: 'Ju', rashi: pos.jupiter.rashi, rashiIndex: pos.jupiter.rashiIndex, longitude: pos.jupiter.longitude, navamsha: pos.jupiter.navamsha, dashamsha: pos.jupiter.dashamsha },
-          { name: 'Venus', symbol: 'Ve', rashi: pos.venus.rashi, rashiIndex: pos.venus.rashiIndex, longitude: pos.venus.longitude, navamsha: pos.venus.navamsha, dashamsha: pos.venus.dashamsha },
-          { name: 'Saturn', symbol: 'Sa', rashi: pos.saturn.rashi, rashiIndex: pos.saturn.rashiIndex, longitude: pos.saturn.longitude, navamsha: pos.saturn.navamsha, dashamsha: pos.saturn.dashamsha },
-          { name: 'Rahu', symbol: 'Ra', rashi: pos.rahu.rashi, rashiIndex: pos.rahu.rashiIndex, longitude: pos.rahu.longitude, navamsha: pos.rahu.navamsha, dashamsha: pos.rahu.dashamsha },
-          { name: 'Ketu', symbol: 'Ke', rashi: pos.ketu.rashi, rashiIndex: pos.ketu.rashiIndex, longitude: pos.ketu.longitude, navamsha: pos.ketu.navamsha, dashamsha: pos.ketu.dashamsha }
+          { name: 'Sun', symbol: 'Su', rashi: pos.sun.rashi, rashiIndex: pos.sun.rashiIndex, longitude: pos.sun.longitude, navamsha: pos.sun.navamsha, navamshaIndex: pos.sun.navamshaIndex, dashamsha: pos.sun.dashamsha, dashamshaIndex: pos.sun.dashamshaIndex },
+          { name: 'Moon', symbol: 'Mo', rashi: pos.moon.rashi, rashiIndex: pos.moon.rashiIndex, longitude: pos.moon.longitude, navamsha: pos.moon.navamsha, navamshaIndex: pos.moon.navamshaIndex, dashamsha: pos.moon.dashamsha, dashamshaIndex: pos.moon.dashamshaIndex },
+          { name: 'Mars', symbol: 'Ma', rashi: pos.mars.rashi, rashiIndex: pos.mars.rashiIndex, longitude: pos.mars.longitude, navamsha: pos.mars.navamsha, navamshaIndex: pos.mars.navamshaIndex, dashamsha: pos.mars.dashamsha, dashamshaIndex: pos.mars.dashamshaIndex },
+          { name: 'Mercury', symbol: 'Me', rashi: pos.mercury.rashi, rashiIndex: pos.mercury.rashiIndex, longitude: pos.mercury.longitude, navamsha: pos.mercury.navamsha, navamshaIndex: pos.mercury.navamshaIndex, dashamsha: pos.mercury.dashamsha, dashamshaIndex: pos.mercury.dashamshaIndex },
+          { name: 'Jupiter', symbol: 'Ju', rashi: pos.jupiter.rashi, rashiIndex: pos.jupiter.rashiIndex, longitude: pos.jupiter.longitude, navamsha: pos.jupiter.navamsha, navamshaIndex: pos.jupiter.navamshaIndex, dashamsha: pos.jupiter.dashamsha, dashamshaIndex: pos.jupiter.dashamshaIndex },
+          { name: 'Venus', symbol: 'Ve', rashi: pos.venus.rashi, rashiIndex: pos.venus.rashiIndex, longitude: pos.venus.longitude, navamsha: pos.venus.navamsha, navamshaIndex: pos.venus.navamshaIndex, dashamsha: pos.venus.dashamsha, dashamshaIndex: pos.venus.dashamshaIndex },
+          { name: 'Saturn', symbol: 'Sa', rashi: pos.saturn.rashi, rashiIndex: pos.saturn.rashiIndex, longitude: pos.saturn.longitude, navamsha: pos.saturn.navamsha, navamshaIndex: pos.saturn.navamshaIndex, dashamsha: pos.saturn.dashamsha, dashamshaIndex: pos.saturn.dashamshaIndex },
+          { name: 'Rahu', symbol: 'Ra', rashi: pos.rahu.rashi, rashiIndex: pos.rahu.rashiIndex, longitude: pos.rahu.longitude, navamsha: pos.rahu.navamsha, navamshaIndex: pos.rahu.navamshaIndex, dashamsha: pos.rahu.dashamsha, dashamshaIndex: pos.rahu.dashamshaIndex },
+          { name: 'Ketu', symbol: 'Ke', rashi: pos.ketu.rashi, rashiIndex: pos.ketu.rashiIndex, longitude: pos.ketu.longitude, navamsha: pos.ketu.navamsha, navamshaIndex: pos.ketu.navamshaIndex, dashamsha: pos.ketu.dashamsha, dashamshaIndex: pos.ketu.dashamshaIndex }
         ];
 
         const results: UpcomingBirthday[] = [];
@@ -978,9 +978,9 @@ function App() {
           moonRashi: pos.moon.rashi,
           moonNakshatraIndex: finalNakshatraIndex,
           moonRashiIndex: pos.moon.rashiIndex,
-          rahu: { ...pos.rahu, dashamsha: pos.rahu.dashamsha },
-          ketu: { ...pos.ketu, dashamsha: pos.ketu.dashamsha },
-          lagna: { ...pos.lagna, dashamsha: pos.lagna.dashamsha },
+          rahu: pos.rahu,
+          ketu: pos.ketu,
+          lagna: pos.lagna,
           planets: planetsData,
           upcomingPlanets: upcomingPlanetsData,
           ayanamsa: pos.ayanamsa
@@ -1028,21 +1028,33 @@ function App() {
     setLoggingIn(true);
     setError(null);
     try {
+      // Basic validation for phone number
+      const cleanPhone = phoneNumber.replace(/[\s\-\(\)]/g, '');
+      if (!cleanPhone.startsWith('+')) {
+        setError("Please include your country code (e.g., +91 for India).");
+        setLoggingIn(false);
+        return;
+      }
+
       const verifier = setupRecaptcha('recaptcha-container');
-      const result = await sendOtp(phoneNumber, verifier);
+      const result = await sendOtp(cleanPhone, verifier);
       setConfirmationResult(result);
       setIsOtpSent(true);
     } catch (err: any) {
       console.error("Error sending OTP:", err);
       let msg = "Failed to send OTP. Please try again.";
-      if (err.code === 'auth/invalid-phone-number') msg = "Invalid phone number format.";
+      if (err.code === 'auth/invalid-phone-number') msg = "Invalid phone number format. Please use E.164 format (e.g., +919876543210).";
       if (err.code === 'auth/too-many-requests') msg = "Too many attempts. Please try again later.";
       if (err.code === 'auth/captcha-check-failed') msg = "Security check failed. Please refresh and try again.";
+      if (err.code === 'auth/unauthorized-domain') msg = "This domain is not authorized for phone authentication. Please contact support.";
+      if (err.code === 'auth/operation-not-allowed') msg = "Phone authentication is not enabled in the Firebase console.";
       
-      setError(msg);
+      setError(`${msg} (${err.code || 'unknown'})`);
       // Reset reCAPTCHA if it fails
       if ((window as any).recaptchaVerifier) {
-        (window as any).recaptchaVerifier.clear();
+        try {
+          (window as any).recaptchaVerifier.clear();
+        } catch (e) {}
         (window as any).recaptchaVerifier = null;
       }
     } finally {
@@ -1060,14 +1072,19 @@ function App() {
     setLoggingIn(true);
     setError(null);
     try {
-      await confirmationResult.confirm(otp);
+      const cleanOtp = otp.replace(/\s/g, '');
+      await confirmationResult.confirm(cleanOtp);
       setShowLoginModal(false);
       setIsOtpSent(false);
       setOtp('');
       setPhoneNumber('');
     } catch (err: any) {
       console.error("Error verifying OTP:", err);
-      setError("Invalid verification code. Please try again.");
+      let msg = "Invalid verification code. Please try again.";
+      if (err.code === 'auth/code-expired') msg = "The verification code has expired. Please request a new one.";
+      if (err.code === 'auth/invalid-verification-code') msg = "Invalid verification code. Please check and try again.";
+      
+      setError(`${msg} (${err.code || 'unknown'})`);
     } finally {
       setLoggingIn(false);
     }
@@ -1384,7 +1401,7 @@ function App() {
   }, [notificationPermission]);
 
   return (
-    <div className="min-h-screen bg-[#FDFCFB] text-[#1A1A1A] font-sans selection:bg-primary/20 relative" style={{ cursor: `url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="32" height="44" viewBox="0 0 100 140" fill="none"><defs><linearGradient id="vel-grad" x1="50" y1="5" x2="50" y2="130" gradientUnits="userSpaceOnUse"><stop stop-color="%23F27D26" /><stop offset="1" stop-color="%235E2B97" /></linearGradient></defs><path d="M50 5 C35 35 15 60 15 90 C15 120 35 130 50 130 C65 130 85 120 85 90 C85 60 65 35 50 5 Z" stroke="url(%23vel-grad)" stroke-width="6" /><path d="M50 130V140" stroke="%23F27D26" stroke-width="6" /><path d="M35 75H65" stroke="%23F27D26" stroke-width="4" /><path d="M30 85H70" stroke="%23F27D26" stroke-width="4" /><path d="M35 95H65" stroke="%23F27D26" stroke-width="4" /><circle cx="50" cy="85" r="4" fill="%23F27D26"/></svg>') 16 0, auto` }}>
+    <div className="min-h-screen bg-[#FDFCFB] text-[#1A1A1A] font-sans selection:bg-primary/20 relative">
       {/* Loading Progress Bar */}
       <AnimatePresence>
         {loading && (
@@ -1448,7 +1465,7 @@ function App() {
               <form onSubmit={isOtpSent ? handleVerifyOtp : handleSendOtp} className="space-y-6">
                 {!isOtpSent ? (
                   <div className="space-y-2">
-                    <label className="text-[10px] uppercase tracking-widest font-bold text-stone-400 ml-1">Phone Number</label>
+                    <label className="text-[10px] uppercase tracking-widest font-bold text-stone-400 ml-1">Phone Number (with Country Code)</label>
                     <div className="relative">
                       <div className="absolute left-4 top-1/2 -translate-y-1/2 text-stone-400">
                         <Globe size={18} />

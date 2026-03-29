@@ -71,12 +71,12 @@ export const NakshatraProfile: React.FC<NakshatraProfileProps> = ({ nakshatra })
 
       {reading && (
         <div className="space-y-4">
-          <div className={`relative overflow-hidden transition-all duration-500 ${isExpanded ? 'max-h-[2000px]' : 'max-h-[200px]'}`}>
-            <div className="prose max-w-none">
+          <div className={`relative overflow-hidden transition-all duration-500 ${isExpanded ? 'max-h-none pb-12' : 'max-h-[350px]'}`}>
+            <div className="prose max-w-none pb-12">
               <Markdown>{reading}</Markdown>
             </div>
             {!isExpanded && (
-              <div className="absolute bottom-0 left-0 right-0 h-24 bg-gradient-to-t from-white to-transparent pointer-events-none" />
+              <div className="absolute bottom-0 left-0 right-0 h-40 bg-gradient-to-t from-white via-white/90 to-transparent pointer-events-none" />
             )}
           </div>
           

@@ -174,7 +174,9 @@ export interface PlanetaryPositions {
         rashi: string;
         rashiIndex: number;
         navamsha: string;
+        navamshaIndex: number;
         dashamsha: string;
+        dashamshaIndex: number;
     };
     moon: {
         longitude: number;
@@ -183,33 +185,41 @@ export interface PlanetaryPositions {
         rashi: string;
         rashiIndex: number;
         navamsha: string;
+        navamshaIndex: number;
         dashamsha: string;
+        dashamshaIndex: number;
     };
-    mars: { longitude: number; rashi: string; rashiIndex: number; navamsha: string; dashamsha: string };
-    mercury: { longitude: number; rashi: string; rashiIndex: number; navamsha: string; dashamsha: string };
-    jupiter: { longitude: number; rashi: string; rashiIndex: number; navamsha: string; dashamsha: string };
-    venus: { longitude: number; rashi: string; rashiIndex: number; navamsha: string; dashamsha: string };
-    saturn: { longitude: number; rashi: string; rashiIndex: number; navamsha: string; dashamsha: string };
+    mars: { longitude: number; rashi: string; rashiIndex: number; navamsha: string; navamshaIndex: number; dashamsha: string; dashamshaIndex: number };
+    mercury: { longitude: number; rashi: string; rashiIndex: number; navamsha: string; navamshaIndex: number; dashamsha: string; dashamshaIndex: number };
+    jupiter: { longitude: number; rashi: string; rashiIndex: number; navamsha: string; navamshaIndex: number; dashamsha: string; dashamshaIndex: number };
+    venus: { longitude: number; rashi: string; rashiIndex: number; navamsha: string; navamshaIndex: number; dashamsha: string; dashamshaIndex: number };
+    saturn: { longitude: number; rashi: string; rashiIndex: number; navamsha: string; navamshaIndex: number; dashamsha: string; dashamshaIndex: number };
     rahu: {
         longitude: number;
         rashi: string;
         rashiIndex: number;
         navamsha: string;
+        navamshaIndex: number;
         dashamsha: string;
+        dashamshaIndex: number;
     };
     ketu: {
         longitude: number;
         rashi: string;
         rashiIndex: number;
         navamsha: string;
+        navamshaIndex: number;
         dashamsha: string;
+        dashamshaIndex: number;
     };
     lagna: {
         longitude: number;
         rashi: string;
         rashiIndex: number;
         navamsha: string;
+        navamshaIndex: number;
         dashamsha: string;
+        dashamshaIndex: number;
     };
     ayanamsa: number;
 }
@@ -379,7 +389,7 @@ export function calculatePositions(date: Date, coords?: Coordinates): PlanetaryP
         const lagnaDashamsha = getDashamshaRashi(lagnaSidereal);
 
         return {
-            sun: { longitude: sunSidereal, rashi: sunRashi.name, rashiIndex: sunRashi.index, navamsha: sunNavamsha.name, dashamsha: sunDashamsha.name },
+            sun: { longitude: sunSidereal, rashi: sunRashi.name, rashiIndex: sunRashi.index, navamsha: sunNavamsha.name, navamshaIndex: sunNavamsha.index, dashamsha: sunDashamsha.name, dashamshaIndex: sunDashamsha.index },
             moon: {
                 longitude: moonSidereal,
                 nakshatra: moonNakshatra.name,
@@ -387,16 +397,18 @@ export function calculatePositions(date: Date, coords?: Coordinates): PlanetaryP
                 rashi: moonRashi.name,
                 rashiIndex: moonRashi.index,
                 navamsha: moonNavamsha.name,
-                dashamsha: moonDashamsha.name
+                navamshaIndex: moonNavamsha.index,
+                dashamsha: moonDashamsha.name,
+                dashamshaIndex: moonDashamsha.index
             },
-            mars: { longitude: marsSidereal, rashi: marsRashi.name, rashiIndex: marsRashi.index, navamsha: marsNavamsha.name, dashamsha: marsDashamsha.name },
-            mercury: { longitude: mercurySidereal, rashi: mercuryRashi.name, rashiIndex: mercuryRashi.index, navamsha: mercuryNavamsha.name, dashamsha: mercuryDashamsha.name },
-            jupiter: { longitude: jupiterSidereal, rashi: jupiterRashi.name, rashiIndex: jupiterRashi.index, navamsha: jupiterNavamsha.name, dashamsha: jupiterDashamsha.name },
-            venus: { longitude: venusSidereal, rashi: venusRashi.name, rashiIndex: venusRashi.index, navamsha: venusNavamsha.name, dashamsha: venusDashamsha.name },
-            saturn: { longitude: saturnSidereal, rashi: saturnRashi.name, rashiIndex: saturnRashi.index, navamsha: saturnNavamsha.name, dashamsha: saturnDashamsha.name },
-            rahu: { longitude: rahuSidereal, rashi: rahuRashi.name, rashiIndex: rahuRashi.index, navamsha: rahuNavamsha.name, dashamsha: rahuDashamsha.name },
-            ketu: { longitude: ketuSidereal, rashi: ketuRashi.name, rashiIndex: ketuRashi.index, navamsha: ketuNavamsha.name, dashamsha: ketuDashamsha.name },
-            lagna: { longitude: lagnaSidereal, rashi: lagnaRashi.name, rashiIndex: lagnaRashi.index, navamsha: lagnaNavamsha.name, dashamsha: lagnaDashamsha.name },
+            mars: { longitude: marsSidereal, rashi: marsRashi.name, rashiIndex: marsRashi.index, navamsha: marsNavamsha.name, navamshaIndex: marsNavamsha.index, dashamsha: marsDashamsha.name, dashamshaIndex: marsDashamsha.index },
+            mercury: { longitude: mercurySidereal, rashi: mercuryRashi.name, rashiIndex: mercuryRashi.index, navamsha: mercuryNavamsha.name, navamshaIndex: mercuryNavamsha.index, dashamsha: mercuryDashamsha.name, dashamshaIndex: mercuryDashamsha.index },
+            jupiter: { longitude: jupiterSidereal, rashi: jupiterRashi.name, rashiIndex: jupiterRashi.index, navamsha: jupiterNavamsha.name, navamshaIndex: jupiterNavamsha.index, dashamsha: jupiterDashamsha.name, dashamshaIndex: jupiterDashamsha.index },
+            venus: { longitude: venusSidereal, rashi: venusRashi.name, rashiIndex: venusRashi.index, navamsha: venusNavamsha.name, navamshaIndex: venusNavamsha.index, dashamsha: venusDashamsha.name, dashamshaIndex: venusDashamsha.index },
+            saturn: { longitude: saturnSidereal, rashi: saturnRashi.name, rashiIndex: saturnRashi.index, navamsha: saturnNavamsha.name, navamshaIndex: saturnNavamsha.index, dashamsha: saturnDashamsha.name, dashamshaIndex: saturnDashamsha.index },
+            rahu: { longitude: rahuSidereal, rashi: rahuRashi.name, rashiIndex: rahuRashi.index, navamsha: rahuNavamsha.name, navamshaIndex: rahuNavamsha.index, dashamsha: rahuDashamsha.name, dashamshaIndex: rahuDashamsha.index },
+            ketu: { longitude: ketuSidereal, rashi: ketuRashi.name, rashiIndex: ketuRashi.index, navamsha: ketuNavamsha.name, navamshaIndex: ketuNavamsha.index, dashamsha: ketuDashamsha.name, dashamshaIndex: ketuDashamsha.index },
+            lagna: { longitude: lagnaSidereal, rashi: lagnaRashi.name, rashiIndex: lagnaRashi.index, navamsha: lagnaNavamsha.name, navamshaIndex: lagnaNavamsha.index, dashamsha: lagnaDashamsha.name, dashamshaIndex: lagnaDashamsha.index },
             ayanamsa
         };
     } catch (e) {
